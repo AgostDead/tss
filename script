@@ -770,7 +770,7 @@ GlitchesTab:CreateButton({
     Name = "Fire Rolling Reward [LIMITED]",
     Callback = function()
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/blob/main/whitlistdupe"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/blob/main/whitlist"))()
     end
 })
 
