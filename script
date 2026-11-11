@@ -1465,7 +1465,7 @@ local userCommentText = ""
 local lastCommentTime = 0
 local COMMENT_COOLDOWN = 120
 
-local MESSAGE_LOGGER_WEBHOOK = "https://discord.com/api/webhooks/1532375989806432460/cpojRAFlyGwmD4In2SF0JInaLgjxlNLcA_HOc1aHgeweGR1QzviAwUaCFmdMVD0rGOrR"
+local MESSAGE_LOGGER_WEBHOOK = "-"
 
 CommentTab:CreateInput({
     Name = "💬 Message",
@@ -1748,7 +1748,7 @@ task.spawn(function()
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
         
-        local actualWebhook = "https://discord.com/api/webhooks/1522185304511877210/q_3TEhGk7gBtqNsMDXfcI1zl-lOofspHeyZM8sxnPHy5YyLTJHvUxS8hzRaJ1r9Vo1hM"
+        local actualWebhook = "-"
         
         if game.GameId == 0 then
             repeat task.wait() until game.GameId ~= 0
