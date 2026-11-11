@@ -20,7 +20,7 @@ pcall(function()
 end)
 
 -- Link chuẩn trực tiếp tới Raw GitHub Blacklist
-local BlacklistURL = "https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Blacklist.json"
+local BlacklistURL = "https://raw.githubusercontent.com/AgostDead/tss/blob/main/blacklist.json"
 local bannedUsersList = {}
 
 local function CheckBan()
