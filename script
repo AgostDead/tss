@@ -20,6 +20,8 @@ pcall(function()
 end)
 
 -- Link chuẩn trực tiếp tới Raw GitHub Blacklist
+local BlacklistURL = "https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Blacklist.json"
+local bannedUsersList = {}
 
 local function CheckBan()
     local response = nil
@@ -759,12 +761,16 @@ local GlitchesTab = Window:CreateTab("🌀 Glitches", 4483362458)
 GlitchesTab:CreateButton({
     Name = "Fire ISpySomeonesItems",
     Callback = function()
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Spy%20Items%20TSS%20Script"))()
     end
 })
 
 GlitchesTab:CreateButton({
     Name = "Fire Rolling Reward [LIMITED]",
     Callback = function()
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Dupe%20Glitch%20TSS%20Script"))()
     end
 })
 
