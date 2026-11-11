@@ -20,12 +20,41 @@ pcall(function()
 end)
 
 -- Link chuẩn trực tiếp tới Raw GitHub Blacklist
-local BlacklistURL = "https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Blacklist.json"
+-- 1. WHITELIST CHECK
+local WHITELIST_URL = "https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"
+local BuiltInWhitelist = { 9295465868 }
+
+local function idIn(list, id)
+    id = tonumber(id)
+    if not id then return false end
+    for _, v in ipairs(list) do
+        if tonumber(v) == id then return true end
+    end
+    return false
+end
+
+local isWhitelisted = idIn(BuiltInWhitelist, LocalPlayer.UserId)
+if not isWhitelisted then
+    local ok, result = pcall(function()
+        local fn = loadstring(game:HttpGet(WHITELIST_URL))
+        if not fn then error("loadstring failed") end
+        return fn()
+    end)
+    if ok and type(result) == "table" then
+        isWhitelisted = idIn(result, LocalPlayer.UserId)
+    end
+end
+if not isWhitelisted then
+    LocalPlayer:Kick("Not whitelisted.")
+    return
+end
+
+-- 2. BLACKLIST CHECK
+local BlacklistURL = "https://raw.githubusercontent.com/AgostDead/tss/main/blacklist.json"
 local bannedUsersList = {}
 
 local function CheckBan()
     local response = nil
-
     local success, err = pcall(function()
         response = game:HttpGet(BlacklistURL)
     end)
@@ -41,11 +70,7 @@ local function CheckBan()
 
             for _, bannedId in ipairs(bannedUsers) do
                 if tonumber(bannedId) == myId then
-                    LocalPlayer:Kick([[
-
-🔨 [NONEUSERHUB BLACKLIST]
-You have been banned from TSS Script - NoneUserHub / Time: Depends on Creator
-Reason: Blacklisted by Creator]])
+                    LocalPlayer:Kick("\n🔨 ВЫ ЗАБАНЕНЫ В BLACKLIST")
                     task.wait(9e9)
                 end
             end
@@ -59,32 +84,7 @@ end
 
 CheckBan()
 
-local function playSound(soundId, volume)
-    pcall(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://" .. tostring(soundId)
-        sound.Volume = volume or 0.6
-        sound.Parent = game:GetService("SoundService")
-        sound:Play()
-        sound.Ended:Connect(function() sound:Destroy() end)
-    end)
-end
-
-pcall(function()
-    game:GetService("CoreGui").ChildAdded:Connect(function(child)
-        if child.Name == "Rayfield" or child:FindFirstChild("Main") then
-            child.DescendantAdded:Connect(function(descendant)
-                if descendant:IsA("TextButton") or descendant:IsA("ImageButton") then
-                    descendant.MouseButton1Click:Connect(function()
-                        playSound(12221967, 0.6)
-                    end)
-                end
-            end)
-        end
-    end)
-end)
-
-local OWNER_USER_ID = 10369850818
+local OWNER_USER_ID = 9295465868
 local IsOwnerInServer = "False (in this server)"
 
 local function SetupOwnerTag(player)
@@ -761,19 +761,16 @@ local GlitchesTab = Window:CreateTab("🌀 Glitches", 4483362458)
 GlitchesTab:CreateButton({
     Name = "Fire ISpySomeonesItems",
     Callback = function()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Spy%20Items%20TSS%20Script"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/spyitemsscript"))()
     end
 })
 
 GlitchesTab:CreateButton({
     Name = "Fire Rolling Reward [LIMITED]",
     Callback = function()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ScriptCreator-938/ScriptsIdunnoG/main/Dupe%20Glitch%20TSS%20Script"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"))()
     end
 })
-
 ----------------------------------------------------
 -- ⚔️ TAB AUTO FARM
 ----------------------------------------------------
