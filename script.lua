@@ -19,37 +19,7 @@ pcall(function()
     end
 end)
 
--- Link chuẩn trực tiếp tới Raw GitHub Blacklist
--- 1. WHITELIST CHECK
-local WHITELIST_URL = "https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"
-local BuiltInWhitelist = { 9295465868 }
-
-local function idIn(list, id)
-    id = tonumber(id)
-    if not id then return false end
-    for _, v in ipairs(list) do
-        if tonumber(v) == id then return true end
-    end
-    return false
-end
-
-local isWhitelisted = idIn(BuiltInWhitelist, LocalPlayer.UserId)
-if not isWhitelisted then
-    local ok, result = pcall(function()
-        local fn = loadstring(game:HttpGet(WHITELIST_URL))
-        if not fn then error("loadstring failed") end
-        return fn()
-    end)
-    if ok and type(result) == "table" then
-        isWhitelisted = idIn(result, LocalPlayer.UserId)
-    end
-end
-if not isWhitelisted then
-    LocalPlayer:Kick("Not whitelisted.")
-    return
-end
-
--- 2. BLACKLIST CHECK
+-- 2. BLACKLIST CHECK (Проверка на бан)
 local BlacklistURL = "https://raw.githubusercontent.com/AgostDead/tss/main/blacklist.json"
 local bannedUsersList = {}
 
@@ -145,22 +115,6 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
 end)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
--- 2. Đặt HÀM KIỂM TRA ở đây
-local function CheckGame(allowedIds)
-    if not table.find(allowedIds, game.PlaceId) then
-        Rayfield:Notify({
-            Title = "Wrong Game!",
-            Content = "You executing NoneUserHub at different Game place",
-            Duration = 5,
-            Image = 4483362458
-        })
-        return false
-    end
-    return true
-end
-
-if not CheckGame({11455876520}) then return end 
 
 local Window = Rayfield:CreateWindow({
    Name = "TSS Script - NoneUserHub (World 1)",
@@ -761,16 +715,17 @@ local GlitchesTab = Window:CreateTab("🌀 Glitches", 4483362458)
 GlitchesTab:CreateButton({
     Name = "Fire ISpySomeonesItems",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/spyitemsscript"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/spyitems.lua"))()
     end
 })
 
 GlitchesTab:CreateButton({
     Name = "Fire Rolling Reward [LIMITED]",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/dupe.lua"))()
     end
 })
+
 ----------------------------------------------------
 -- ⚔️ TAB AUTO FARM
 ----------------------------------------------------
@@ -1591,7 +1546,6 @@ SettingsTab:CreateButton({
 SettingsTab:CreateSection("⚙️ Configuration Management")
 local ConfigStatusLabel = SettingsTab:CreateLabel("Active Config: [" .. activeConfigName .. "]")
 
--- Tăng giới hạn lấy danh sách Config từ 5 lên 10
 local function GetSavedConfigs()
     local configList = {}
     if listfiles then
@@ -1600,7 +1554,7 @@ local function GetSavedConfigs()
             local name = string.match(file, "NoneUserHub_Config_(.-)%.json$")
             if name then
                 table.insert(configList, name)
-                if #configList >= 10 then break end -- Đã nâng lên 10 slots
+                if #configList >= 10 then break end
             end
         end
     end
@@ -1609,7 +1563,7 @@ local function GetSavedConfigs()
 end
 
 local ConfigDropdown = SettingsTab:CreateDropdown({
-    Name = "Select Saved Config (Max 10)", -- Đổi nhãn hiển thị thành Max 10
+    Name = "Select Saved Config (Max 10)",
     Options = GetSavedConfigs(),
     CurrentOption = {GetSavedConfigs()[1] or "None"},
     MultipleOptions = false,
@@ -1640,7 +1594,6 @@ SettingsTab:CreateButton({
             if name == targetConfigName then isExisting = true break end
         end
 
-        -- Kiểm tra giới hạn 10 configs
         if not isExisting and #savedConfigs >= 10 and savedConfigs[1] ~= "None" then
             return Rayfield:Notify({Title = "Limit Reached", Content = "Maximum 10 configs allowed! Please delete one first.", Duration = 4})
         end
@@ -1694,7 +1647,6 @@ SettingsTab:CreateButton({
     end,
 })
 
--- NÚT AUTO LOAD MỚI ĐƯỢC THÊM VÀO ĐÂY
 SettingsTab:CreateButton({
     Name = "🔄📂 Auto Load Selected Config",
     Callback = function()
@@ -1707,7 +1659,6 @@ SettingsTab:CreateButton({
             return Rayfield:Notify({Title = "Error", Content = "Config file does not exist!", Duration = 3})
         end
 
-        -- Lưu tên config được chọn vào file cấu hình Auto Load riêng
         local autoLoadData = {AutoLoadConfig = targetConfigName}
         local success, _ = pcall(function()
             writefile("NoneUserHub_AutoLoad.json", HttpService:JSONEncode(autoLoadData))
@@ -1826,9 +1777,8 @@ Rayfield:Notify({
    Image = 4483362458,
 })
 
--- Logic Tự Động Load Config Khi Kích Hoạt Script
 task.spawn(function()
-    task.wait(1) -- Chờ Rayfield khởi tạo xong các Flag
+    task.wait(1)
     local AUTOLOAD_FILE = "NoneUserHub_AutoLoad.json"
     if isfile(AUTOLOAD_FILE) then
         local success, content = pcall(function() return readfile(AUTOLOAD_FILE) end)
