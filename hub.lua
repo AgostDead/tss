@@ -10,7 +10,7 @@ local LINKS = {
     MainScript = "https://raw.githubusercontent.com/AgostDead/tss/main/script.lua",
     Dupe = "https://raw.githubusercontent.com/AgostDead/tss/main/dupe.lua",
     SpyItems = "https://raw.githubusercontent.com/AgostDead/tss/main/spyitems.lua",
-    Whitelist = "https://raw.githubusercontent.com/AgostDead/tss/main/whitlist"
+    Whitelist = "https://raw.githubusercontent.com/AgostDead/tss/main/whitelist.txt"
 }
 
 -- ============================================
