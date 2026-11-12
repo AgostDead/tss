@@ -5,7 +5,11 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local BuiltInWhitelist = {
-    9295465868, -- UserID NoneUser
+    9295465868,
+    9296975586, 
+    2633136710,
+    26388,
+    11569438,
 }
 
 local isWhitelisted = false
