@@ -1,10 +1,658 @@
-return {
-    -- Owner😎👌
+----------------------------------------------------
+-- WHITELIST CHECK
+----------------------------------------------------
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local BuiltInWhitelist = {
     9295465868,
-    
-    -- jadie and max
     9296975586, 
     2633136710,
     26388,
     11569438,
 }
+
+local isWhitelisted = false
+
+for _, val in pairs(BuiltInWhitelist) do
+    if val == LocalPlayer.Name or val == LocalPlayer.UserId then
+        isWhitelisted = true
+        break
+    end
+end
+
+if not isWhitelisted then
+    local success, whitelistTable = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"))()
+    end)
+
+    if success and whitelistTable then
+        if type(whitelistTable) == "table" then
+            for _, value in pairs(whitelistTable) do
+                if value == LocalPlayer.Name or value == LocalPlayer.UserId then
+                    isWhitelisted = true
+                    break
+                end
+            end
+        elseif type(whitelistTable) == "boolean" then
+            isWhitelisted = whitelistTable
+        end
+    end
+end
+
+----------------------------------------------------
+-- ACCESS DENIED GUI
+----------------------------------------------------
+if not isWhitelisted then
+    if game:GetService("CoreGui"):FindFirstChild("AccessDeniedGui_NoneUserHub") then
+        game:GetService("CoreGui").AccessDeniedGui_NoneUserHub:Destroy()
+    end
+
+    local DeniedGui = Instance.new("ScreenGui")
+    DeniedGui.Name = "AccessDeniedGui_NoneUserHub"
+    DeniedGui.ResetOnSpawn = false
+
+    pcall(function()
+        DeniedGui.Parent = game:GetService("CoreGui")
+    end)
+
+    local DeniedFrame = Instance.new("Frame")
+    DeniedFrame.Name = "DeniedFrame"
+    DeniedFrame.Size = UDim2.new(0, 260, 0, 175)
+    DeniedFrame.Position = UDim2.new(0.5, -130, 0.4, -87)
+    DeniedFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    DeniedFrame.BorderSizePixel = 0
+    DeniedFrame.Active = true
+    DeniedFrame.Parent = DeniedGui
+
+    local DeniedCorner = Instance.new("UICorner")
+    DeniedCorner.CornerRadius = UDim.new(0, 8)
+    DeniedCorner.Parent = DeniedFrame
+
+    local DeniedStroke = Instance.new("UIStroke")
+    DeniedStroke.Color = Color3.fromRGB(255, 50, 50)
+    DeniedStroke.Thickness = 1.5
+    DeniedStroke.Parent = DeniedFrame
+
+    local DeniedTitle = Instance.new("TextLabel")
+    DeniedTitle.Size = UDim2.new(1, -20, 0, 28)
+    DeniedTitle.Position = UDim2.new(0, 10, 0, 0)
+    DeniedTitle.BackgroundTransparency = 1
+    DeniedTitle.Text = "Rolling Glitch - NoneUserHub"
+    DeniedTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DeniedTitle.TextSize = 13
+    DeniedTitle.Font = Enum.Font.SourceSansBold
+    DeniedTitle.TextXAlignment = Enum.TextXAlignment.Left
+    DeniedTitle.Parent = DeniedFrame
+
+    local Line = Instance.new("Frame")
+    Line.Size = UDim2.new(1, -20, 0, 1)
+    Line.Position = UDim2.new(0, 10, 0, 28)
+    Line.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    Line.BorderSizePixel = 0
+    Line.Parent = DeniedFrame
+
+    local DeniedHeader = Instance.new("TextLabel")
+    DeniedHeader.Size = UDim2.new(1, -20, 0, 22)
+    DeniedHeader.Position = UDim2.new(0, 10, 0, 30)
+    DeniedHeader.BackgroundTransparency = 1
+    DeniedHeader.Text = "Access Denied!"
+    DeniedHeader.TextColor3 = Color3.fromRGB(255, 60, 60)
+    DeniedHeader.TextSize = 14
+    DeniedHeader.Font = Enum.Font.SourceSansBold
+    DeniedHeader.Parent = DeniedFrame
+
+    local DeniedText = Instance.new("TextLabel")
+    DeniedText.Size = UDim2.new(1, -20, 0, 24)
+    DeniedText.Position = UDim2.new(0, 10, 0, 52)
+    DeniedText.BackgroundTransparency = 1
+    DeniedText.Text = "You are not in Whitelist Rolling Glitch Script."
+    DeniedText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    DeniedText.TextSize = 11
+    DeniedText.Font = Enum.Font.SourceSans
+    DeniedText.TextWrapped = true
+    DeniedText.Parent = DeniedFrame
+
+    -- Dòng Tax ở DeniedGui
+    local DeniedTax = Instance.new("TextLabel")
+    DeniedTax.Size = UDim2.new(1, -20, 0, 36)
+    DeniedTax.Position = UDim2.new(0, 10, 0, 78)
+    DeniedTax.BackgroundTransparency = 1
+    DeniedTax.Text = "Tax: 20% Celestial & Chrome of your backpack per Day (1 day)\n(Tax will not apply to Owner's Friend)"
+    DeniedTax.TextColor3 = Color3.fromRGB(255, 200, 80)
+    DeniedTax.TextSize = 10
+    DeniedTax.Font = Enum.Font.SourceSansBold
+    DeniedTax.TextWrapped = true
+    DeniedTax.Parent = DeniedFrame
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(1, -20, 0, 26)
+    CloseBtn.Position = UDim2.new(0, 10, 0, 136)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    CloseBtn.Text = "Close"
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseBtn.TextSize = 12
+    CloseBtn.Font = Enum.Font.SourceSansBold
+    CloseBtn.Parent = DeniedFrame
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        DeniedGui:Destroy()
+    end)
+
+    return
+end
+
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+getgenv().AutoRolling = false
+getgenv().AutoReset = false
+getgenv().ResetDelay = 1.0
+
+if game:GetService("CoreGui"):FindFirstChild("DupeGlitchGui_NoneUserHub") then
+    game:GetService("CoreGui").DupeGlitchGui_NoneUserHub:Destroy()
+end
+
+----------------------------------------------------
+-- UI CREATION
+----------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DupeGlitchGui_NoneUserHub"
+ScreenGui.ResetOnSpawn = false
+
+pcall(function()
+    ScreenGui.Parent = game:GetService("CoreGui")
+end)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -130, 0.35, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local MainUICorner = Instance.new("UICorner")
+MainUICorner.CornerRadius = UDim.new(0, 8)
+MainUICorner.Parent = MainFrame
+
+local MainUIStroke = Instance.new("UIStroke")
+MainUIStroke.Color = Color3.fromRGB(0, 170, 255)
+MainUIStroke.Thickness = 1.2
+MainUIStroke.Parent = MainFrame
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -35, 0, 32)
+Title.Position = UDim2.new(0, 8, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Rolling Glitch - NoneUserHub"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 13
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Minimize Button
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Name = "MinimizeBtn"
+MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
+MinimizeBtn.Position = UDim2.new(1, -26, 0, 5)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.TextSize = 15
+MinimizeBtn.Font = Enum.Font.SourceSansBold
+MinimizeBtn.AutoButtonColor = true
+MinimizeBtn.Parent = MainFrame
+
+local MiniCorner = Instance.new("UICorner")
+MiniCorner.CornerRadius = UDim.new(0, 4)
+MiniCorner.Parent = MinimizeBtn
+
+local Line = Instance.new("Frame")
+Line.Size = UDim2.new(1, -16, 0, 1)
+Line.Position = UDim2.new(0, 8, 0, 32)
+Line.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+Line.BorderSizePixel = 0
+Line.Parent = MainFrame
+
+-- Container
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(1, -16, 1, -40)
+Container.Position = UDim2.new(0, 8, 0, 36)
+Container.BackgroundTransparency = 1
+Container.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.Parent = Container
+
+----------------------------------------------------
+-- MINIMIZE SYSTEM
+----------------------------------------------------
+local isMinimized = false
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        Container.Visible = false
+        Line.Visible = false
+        MainFrame.Size = UDim2.new(0, 260, 0, 32)
+        MinimizeBtn.Text = "+"
+    else
+        Container.Visible = true
+        Line.Visible = true
+        MainFrame.Size = UDim2.new(0, 260, 0, 320)
+        MinimizeBtn.Text = "-"
+    end
+end)
+
+----------------------------------------------------
+-- DRAGGABLE SYSTEM (MOBILE & PC)
+----------------------------------------------------
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+----------------------------------------------------
+-- CONTROLS
+----------------------------------------------------
+
+-- Row 1: Roll Controls
+local Row1 = Instance.new("Frame")
+Row1.Size = UDim2.new(1, 0, 0, 26)
+Row1.BackgroundTransparency = 1
+Row1.Parent = Container
+
+local AutoRollBtn = Instance.new("TextButton")
+AutoRollBtn.Size = UDim2.new(0.5, -3, 1, 0)
+AutoRollBtn.Position = UDim2.new(0, 0, 0, 0)
+AutoRollBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+AutoRollBtn.Text = "Auto Roll: OFF"
+AutoRollBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoRollBtn.TextSize = 11
+AutoRollBtn.Font = Enum.Font.SourceSansBold
+AutoRollBtn.Parent = Row1
+Instance.new("UICorner", AutoRollBtn).CornerRadius = UDim.new(0, 5)
+
+local AutoRollStroke = Instance.new("UIStroke")
+AutoRollStroke.Color = Color3.fromRGB(55, 55, 70)
+AutoRollStroke.Thickness = 1
+AutoRollStroke.Parent = AutoRollBtn
+
+local ManualRollBtn = Instance.new("TextButton")
+ManualRollBtn.Size = UDim2.new(0.5, -3, 1, 0)
+ManualRollBtn.Position = UDim2.new(0.5, 3, 0, 0)
+ManualRollBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
+ManualRollBtn.Text = "Roll Once"
+ManualRollBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ManualRollBtn.TextSize = 11
+ManualRollBtn.Font = Enum.Font.SourceSansBold
+ManualRollBtn.Parent = Row1
+Instance.new("UICorner", ManualRollBtn).CornerRadius = UDim.new(0, 5)
+
+-- Row 2: Reset Controls
+local Row2 = Instance.new("Frame")
+Row2.Size = UDim2.new(1, 0, 0, 26)
+Row2.BackgroundTransparency = 1
+Row2.Parent = Container
+
+local AutoResetBtn = Instance.new("TextButton")
+AutoResetBtn.Size = UDim2.new(0.5, -3, 1, 0)
+AutoResetBtn.Position = UDim2.new(0, 0, 0, 0)
+AutoResetBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+AutoResetBtn.Text = "Auto Reset: OFF"
+AutoResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoResetBtn.TextSize = 11
+AutoResetBtn.Font = Enum.Font.SourceSansBold
+AutoResetBtn.Parent = Row2
+Instance.new("UICorner", AutoResetBtn).CornerRadius = UDim.new(0, 5)
+
+local AutoResetStroke = Instance.new("UIStroke")
+AutoResetStroke.Color = Color3.fromRGB(55, 55, 70)
+AutoResetStroke.Thickness = 1
+AutoResetStroke.Parent = AutoResetBtn
+
+local DelayFrame = Instance.new("Frame")
+DelayFrame.Size = UDim2.new(0.5, -3, 1, 0)
+DelayFrame.Position = UDim2.new(0.5, 3, 0, 0)
+DelayFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+DelayFrame.Parent = Row2
+Instance.new("UICorner", DelayFrame).CornerRadius = UDim.new(0, 5)
+
+local DelayLabel = Instance.new("TextLabel")
+DelayLabel.Size = UDim2.new(0.6, 0, 1, 0)
+DelayLabel.Position = UDim2.new(0, 4, 0, 0)
+DelayLabel.BackgroundTransparency = 1
+DelayLabel.Text = "Delay(s):"
+DelayLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+DelayLabel.TextSize = 11
+DelayLabel.Font = Enum.Font.SourceSans
+DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
+DelayLabel.Parent = DelayFrame
+
+local DelayInput = Instance.new("TextBox")
+DelayInput.Size = UDim2.new(0.4, -4, 0.7, 0)
+DelayInput.Position = UDim2.new(0.6, 0, 0.15, 0)
+DelayInput.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+DelayInput.Text = "1.0"
+DelayInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+DelayInput.TextSize = 11
+DelayInput.Font = Enum.Font.SourceSansBold
+DelayInput.ClearTextOnFocus = false
+DelayInput.Parent = DelayFrame
+Instance.new("UICorner", DelayInput).CornerRadius = UDim.new(0, 4)
+
+-- Logic Events
+AutoRollBtn.MouseButton1Click:Connect(function()
+    getgenv().AutoRolling = not getgenv().AutoRolling
+    if getgenv().AutoRolling then
+        AutoRollBtn.Text = "Auto Roll: ON"
+        AutoRollBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 70)
+        AutoRollStroke.Color = Color3.fromRGB(0, 255, 120)
+
+        task.spawn(function()
+            while getgenv().AutoRolling do
+                pcall(function()
+                    ReplicatedStorage.Remote.FromLocalForServer.Area.Accept:FireServer()
+                end)
+                task.wait(0.5)
+            end
+        end)
+    else
+        AutoRollBtn.Text = "Auto Roll: OFF"
+        AutoRollBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        AutoRollStroke.Color = Color3.fromRGB(55, 55, 70)
+    end
+end)
+
+ManualRollBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        ReplicatedStorage.Remote.FromLocalForServer.Area.Accept:FireServer()
+    end)
+end)
+
+AutoResetBtn.MouseButton1Click:Connect(function()
+    getgenv().AutoReset = not getgenv().AutoReset
+    if getgenv().AutoReset then
+        AutoResetBtn.Text = "Auto Reset: ON"
+        AutoResetBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
+        AutoResetStroke.Color = Color3.fromRGB(255, 70, 70)
+
+        task.spawn(function()
+            while getgenv().AutoReset do
+                local character = LocalPlayer.Character
+                if character then
+                    character:BreakJoints()
+                end
+                task.wait(getgenv().ResetDelay or 1.0)
+            end
+        end)
+    else
+        AutoResetBtn.Text = "Auto Reset: OFF"
+        AutoResetBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        AutoResetStroke.Color = Color3.fromRGB(55, 55, 70)
+    end
+end)
+
+DelayInput.FocusLost:Connect(function()
+    local num = tonumber(DelayInput.Text)
+    if num and num > 0 then
+        getgenv().ResetDelay = num
+    else
+        DelayInput.Text = tostring(getgenv().ResetDelay)
+    end
+end)
+
+----------------------------------------------------
+-- Row 3: SEARCH BAR & CLEAR BUTTON
+----------------------------------------------------
+local ToolsRow = Instance.new("Frame")
+ToolsRow.Size = UDim2.new(1, 0, 0, 25)
+ToolsRow.BackgroundTransparency = 1
+ToolsRow.Parent = Container
+
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(0.72, -3, 1, 0)
+SearchBox.Position = UDim2.new(0, 0, 0, 0)
+SearchBox.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+SearchBox.PlaceholderText = "Search item..."
+SearchBox.Text = ""
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.TextSize = 11
+SearchBox.Font = Enum.Font.SourceSans
+SearchBox.Parent = ToolsRow
+Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 5)
+
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0.28, 0, 1, 0)
+ClearBtn.Position = UDim2.new(0.72, 3, 0, 0)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
+ClearBtn.Text = "Clear All"
+ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearBtn.TextSize = 11
+ClearBtn.Font = Enum.Font.SourceSansBold
+ClearBtn.Parent = ToolsRow
+Instance.new("UICorner", ClearBtn).CornerRadius = UDim.new(0, 5)
+
+----------------------------------------------------
+-- Row 4: TAX NOTICE IN MAIN GUI
+----------------------------------------------------
+local MainTaxLabel = Instance.new("TextLabel")
+MainTaxLabel.Size = UDim2.new(1, 0, 0, 28)
+MainTaxLabel.BackgroundTransparency = 1
+MainTaxLabel.Text = "Tax: 7 Celestial & 5 Chromes below 1 Week\n12 Celestial& 9 Chromes above 1 Week\n(1 week = Above 1 week tax\n(Tax will not apply to Owner's Friend"
+MainTaxLabel.TextColor3 = Color3.fromRGB(255, 200, 80)
+MainTaxLabel.TextSize = 10
+MainTaxLabel.Font = Enum.Font.SourceSansBold
+MainTaxLabel.TextWrapped = true
+MainTaxLabel.Parent = Container
+
+----------------------------------------------------
+-- LIST ITEMS GOT
+----------------------------------------------------
+local ListLabel = Instance.new("TextLabel")
+ListLabel.Size = UDim2.new(1, 0, 0, 14)
+ListLabel.BackgroundTransparency = 1
+ListLabel.Text = "List Items Got:"
+ListLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
+ListLabel.TextSize = 11
+ListLabel.Font = Enum.Font.SourceSansBold
+ListLabel.TextXAlignment = Enum.TextXAlignment.Left
+ListLabel.Parent = Container
+
+local ItemsScrollFrame = Instance.new("ScrollingFrame")
+ItemsScrollFrame.Name = "ItemsScrollFrame"
+ItemsScrollFrame.Size = UDim2.new(1, 0, 0, 114)
+ItemsScrollFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+ItemsScrollFrame.BorderSizePixel = 0
+ItemsScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ItemsScrollFrame.ScrollBarThickness = 3
+ItemsScrollFrame.Parent = Container
+
+Instance.new("UICorner", ItemsScrollFrame).CornerRadius = UDim.new(0, 5)
+
+local ScrollStroke = Instance.new("UIStroke")
+ScrollStroke.Color = Color3.fromRGB(40, 40, 50)
+ScrollStroke.Thickness = 1
+ScrollStroke.Parent = ItemsScrollFrame
+
+local ScrollLayout = Instance.new("UIListLayout")
+ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScrollLayout.Padding = UDim.new(0, 3)
+ScrollLayout.Parent = ItemsScrollFrame
+
+local ScrollPadding = Instance.new("UIPadding")
+ScrollPadding.PaddingLeft = UDim.new(0, 5)
+ScrollPadding.PaddingTop = UDim.new(0, 3)
+ScrollPadding.Parent = ItemsScrollFrame
+
+-- Logic Search Bar
+SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local filter = SearchBox.Text:lower()
+    for _, child in pairs(ItemsScrollFrame:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child.Visible = (filter == "" or child.Text:lower():find(filter))
+        end
+    end
+end)
+
+-- Logic Clear All
+ClearBtn.MouseButton1Click:Connect(function()
+    for _, child in pairs(ItemsScrollFrame:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+end)
+
+----------------------------------------------------
+-- COLOR & ITEM LOG LOGIC
+----------------------------------------------------
+local function GetItemColor(text)
+    local lowerText = text:lower()
+
+    if lowerText:find("basic") then
+        return Color3.fromRGB(160, 160, 160) -- Xám
+    elseif lowerText:find("mega") then
+        return Color3.fromRGB(255, 50, 50) -- Đỏ
+    elseif lowerText:find("ultra") then
+        return Color3.fromRGB(170, 50, 255) -- Tím
+    elseif lowerText:find("secret") then
+        return Color3.fromRGB(255, 105, 180) -- Hồng
+    elseif lowerText:find("godly") then
+        return Color3.fromRGB(255, 215, 0) -- Vàng
+    elseif lowerText:find("amethyst") then
+        return Color3.fromRGB(60, 100, 230) -- Xanh dương đậm nhẹ
+    elseif lowerText:find("celestial") then
+        return Color3.fromRGB(255, 140, 0) -- Cam
+    elseif lowerText:find("chrome") then
+        return Color3.fromRGB(144, 238, 144) -- Xanh lá nhạt nhẹ
+    end
+
+    return Color3.fromRGB(255, 255, 255)
+end
+
+local function AddItemLog(itemText)
+    local LogLabel = Instance.new("TextLabel")
+    LogLabel.Size = UDim2.new(1, -8, 0, 16)
+    LogLabel.Font = Enum.Font.SourceSansBold
+    LogLabel.TextSize = 11
+    LogLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Thêm [Giờ:Phút:Giây]
+    local timeStr = os.date("%H:%M:%S")
+    LogLabel.Text = "[" .. timeStr .. "] " .. itemText
+    LogLabel.TextColor3 = GetItemColor(itemText)
+
+    -- Nền vàng mờ nếu nhận được Celestial hoặc Chrome
+    local lowerText = itemText:lower()
+    if lowerText:find("celestial") or lowerText:find("chrome") then
+        LogLabel.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
+        LogLabel.BackgroundTransparency = 0.35
+        Instance.new("UICorner", LogLabel).CornerRadius = UDim.new(0, 4)
+    else
+        LogLabel.BackgroundTransparency = 1
+    end
+
+    LogLabel.Parent = ItemsScrollFrame
+
+    -- Tự động cuộn xuống dưới
+    ScrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        ItemsScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ScrollLayout.AbsoluteContentSize.Y + 6)
+        ItemsScrollFrame.CanvasPosition = Vector2.new(0, ScrollLayout.AbsoluteContentSize.Y)
+    end)
+end
+
+----------------------------------------------------
+-- MONITOR TOP 1, TOP 2, TOP 3
+----------------------------------------------------
+local lastLoggedText = ""
+
+local function MonitorTopImage(imageTop)
+    if not imageTop then return end
+
+    local nameText = imageTop:FindFirstChild("NameText")
+    local valueGetText = imageTop:FindFirstChild("ValueGetText")
+
+    if nameText and valueGetText then
+        local function checkValue()
+            local displayName = LocalPlayer.DisplayName
+            local currentName = nameText.Text
+            local currentValue = valueGetText.Text
+
+            if currentName == displayName and currentValue ~= "" then
+                local cleanValue = currentValue:gsub("^%+", "")
+                local logMessage = "You got " .. cleanValue .. "!"
+
+                if lastLoggedText ~= logMessage then
+                    lastLoggedText = logMessage
+                    AddItemLog(logMessage)
+                end
+            end
+        end
+
+        nameText:GetPropertyChangedSignal("Text"):Connect(checkValue)
+        valueGetText:GetPropertyChangedSignal("Text"):Connect(checkValue)
+        checkValue()
+    end
+end
+
+task.spawn(function()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local guiForRoblox = playerGui:WaitForChild("GUIForRoblox", 10)
+
+    if guiForRoblox then
+        local topNames = {"ImageTop1", "ImageTop2", "ImageTop3"}
+        for _, name in ipairs(topNames) do
+            local imageTop = guiForRoblox:FindFirstChild(name)
+            if imageTop then
+                MonitorTopImage(imageTop)
+            end
+            guiForRoblox.ChildAdded:Connect(function(child)
+                if child.Name == name then
+                    MonitorTopImage(child)
+                end
+            end)
+        end
+    end
+end)
