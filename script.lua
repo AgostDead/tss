@@ -114,7 +114,8 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
     end
 end)
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet("https://pastebin.com/raw/AVMVm72L"))()
+-- loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "TSS Script - NoneUserHub (World 1)",
