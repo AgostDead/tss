@@ -71,7 +71,7 @@ local function SetupOwnerTag(player)
                 local label = Instance.new("TextLabel")
                 label.Size = UDim2.new(1, 0, 1, 0)
                 label.BackgroundTransparency = 1
-                label.Text = "👑Hub Owner👑"
+                label.Text = "👑PainKillers Owner👑"
                 label.TextColor3 = Color3.fromRGB(255, 215, 0)
                 label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                 label.TextStrokeTransparency = 0
@@ -107,7 +107,7 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
         if Rayfield then
             Rayfield:Notify({
                 Title = "TSS Alert",
-                Content = "Creator NoneUsername0813 has just joined the game!",
+                Content = "Creator Angry66gsjjd YT has just joined the game!",
                 Duration = 5,
             })
         end
@@ -120,7 +120,7 @@ local Rayfield = loadstring(game:HttpGet("https://pastebin.com/raw/AVMVm72L"))()
 local Window = Rayfield:CreateWindow({
    Name = "TSS Script - PainKillersHub (World 1)",
    LoadingTitle = "Loading",
-   LoadingSubtitle = "Made by NoneUsername0813",
+   LoadingSubtitle = "Made by Angry66gsjjd YT",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = "PainKillersHub",
@@ -472,30 +472,76 @@ for i = 1, 6 do
    })
 end
 
+-- ============================================================
+-- ИСПРАВЛЕННЫЙ БЛОК: Sacrifice -> Ascension (по парам, с ожиданием)
+-- ============================================================
+
+local function GetCurrentLevel()
+    local stats = LocalPlayer:FindFirstChild("Stats")
+    local levelObj = stats and stats:FindFirstChild("Level")
+    return levelObj and levelObj.Value or nil
+end
+
+local function WaitForLevelChange(prevLevel, timeout)
+    local stats = LocalPlayer:FindFirstChild("Stats")
+    local levelObj = stats and stats:FindFirstChild("Level")
+    if not levelObj then return false end
+
+    local startTime = tick()
+    while tick() - startTime < (timeout or 3) do
+        if levelObj.Value ~= prevLevel then
+            return true
+        end
+        task.wait(0.1)
+    end
+    return false
+end
+
 task.spawn(function()
-   local remoteFolder = game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FromLocalForServer"):WaitForChild("Get")
+    local remoteFolder = game:GetService("ReplicatedStorage")
+        :WaitForChild("Remote")
+        :WaitForChild("FromLocalForServer")
+        :WaitForChild("Get")
 
-   while true do
-      local stats = LocalPlayer:FindFirstChild("Stats")
-      local levelObj = stats and stats:FindFirstChild("Level")
+    for i = 1, 6 do
+        task.spawn(function()
+            while true do
+                local sacEnabled = getgenv()["AutoSac" .. i]
+                local ascEnabled = getgenv()["AutoAsc" .. i]
 
-      if levelObj then
-         for i = 1, 6 do
-            if getgenv()["AutoSac" .. i] then
-               local targetRemote = remoteFolder:FindFirstChild("sac" .. i)
-               if targetRemote then targetRemote:FireServer() end
+                if not sacEnabled and not ascEnabled then
+                    task.wait(0.2)
+                else
+                    local sacRemote = remoteFolder:FindFirstChild("sac" .. i)
+                    local ascRemote = remoteFolder:FindFirstChild("asc" .. i)
+
+                    -- ШАГ 1: SACRIFICE
+                    if sacEnabled and sacRemote then
+                        local prevLevel = GetCurrentLevel()
+                        sacRemote:FireServer()
+                        local changed = WaitForLevelChange(prevLevel, 3)
+                        if not changed then
+                            sacRemote:FireServer()
+                            WaitForLevelChange(prevLevel, 3)
+                        end
+                    end
+
+                    -- ШАГ 2: ASCENSION (только после Sac, если он включён)
+                    if ascEnabled and ascRemote then
+                        local prevLevel = GetCurrentLevel()
+                        ascRemote:FireServer()
+                        local changed = WaitForLevelChange(prevLevel, 3)
+                        if not changed then
+                            ascRemote:FireServer()
+                            WaitForLevelChange(prevLevel, 3)
+                        end
+                    end
+
+                    task.wait(0.2)
+                end
             end
-         end
-
-         for i = 1, 6 do
-            if getgenv()["AutoAsc" .. i] then
-               local targetRemote = remoteFolder:FindFirstChild("asc" .. i)
-               if targetRemote then targetRemote:FireServer() end
-            end
-         end
-      end
-      task.wait(0.3)
-   end
+        end)
+    end
 end)
 
 MainTab:CreateSection("— Auto Solution ChatQuest V2 —")
