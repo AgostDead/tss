@@ -473,24 +473,35 @@ for i = 1, 6 do
 end
 
 -- ============================================================
--- ИСПРАВЛЕННЫЙ БЛОК: Sacrifice -> Ascension (по парам, с ожиданием)
+-- ИСПРАВЛЕННЫЙ БЛОК v2: Sacrifice -> Ascension (ждём ЛЮБУЮ статку)
 -- ============================================================
 
-local function GetCurrentLevel()
+-- Снимок всех числовых стат (ValueBase) в Stats
+local function GetStatsSnapshot()
+    local snapshot = {}
     local stats = LocalPlayer:FindFirstChild("Stats")
-    local levelObj = stats and stats:FindFirstChild("Level")
-    return levelObj and levelObj.Value or nil
+    if not stats then return snapshot end
+    for _, obj in ipairs(stats:GetDescendants()) do
+        if obj:IsA("ValueBase") then
+            local ok, val = pcall(function() return obj.Value end)
+            if ok and type(val) == "number" then
+                snapshot[obj:GetFullName()] = val
+            end
+        end
+    end
+    return snapshot
 end
 
-local function WaitForLevelChange(prevLevel, timeout)
-    local stats = LocalPlayer:FindFirstChild("Stats")
-    local levelObj = stats and stats:FindFirstChild("Level")
-    if not levelObj then return false end
-
+-- Ждём изменения любой статы (или таймаут)
+local function WaitForAnyStatChange(prevSnapshot, timeout)
     local startTime = tick()
-    while tick() - startTime < (timeout or 3) do
-        if levelObj.Value ~= prevLevel then
-            return true
+    while tick() - startTime < (timeout or 4) do
+        local now = GetStatsSnapshot()
+        for name, oldVal in pairs(prevSnapshot) do
+            local newVal = now[name]
+            if newVal ~= nil and newVal ~= oldVal then
+                return true, name, oldVal, newVal
+            end
         end
         task.wait(0.1)
     end
@@ -517,23 +528,25 @@ task.spawn(function()
 
                     -- ШАГ 1: SACRIFICE
                     if sacEnabled and sacRemote then
-                        local prevLevel = GetCurrentLevel()
+                        local before = GetStatsSnapshot()
                         sacRemote:FireServer()
-                        local changed = WaitForLevelChange(prevLevel, 3)
+                        local changed, statName, oldV, newV = WaitForAnyStatChange(before, 4)
+                        -- print("[Sac "..i.."] changed:", statName, oldV, "->", newV)  -- раскомментируй для диагностики
                         if not changed then
                             sacRemote:FireServer()
-                            WaitForLevelChange(prevLevel, 3)
+                            WaitForAnyStatChange(before, 4)
                         end
                     end
 
-                    -- ШАГ 2: ASCENSION (только после Sac, если он включён)
+                    -- ШАГ 2: ASCENSION (только после Sac)
                     if ascEnabled and ascRemote then
-                        local prevLevel = GetCurrentLevel()
+                        local before = GetStatsSnapshot()
                         ascRemote:FireServer()
-                        local changed = WaitForLevelChange(prevLevel, 3)
+                        local changed, statName, oldV, newV = WaitForAnyStatChange(before, 4)
+                        -- print("[Asc "..i.."] changed:", statName, oldV, "->", newV)  -- раскомментируй для диагностики
                         if not changed then
                             ascRemote:FireServer()
-                            WaitForLevelChange(prevLevel, 3)
+                            WaitForAnyStatChange(before, 4)
                         end
                     end
 
