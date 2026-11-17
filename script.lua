@@ -114,9 +114,7 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
     end
 end)
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
---loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/new-ui-painkillers/main/ui"))()
---loadstring(game:HttpGet("https://pastebin.com/raw/AVMVm72L"))()
+local Rayfield = loadstring(game:HttpGet("https://pastebin.com/raw/AVMVm72L"))()
 -- loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
