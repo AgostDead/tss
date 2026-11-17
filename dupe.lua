@@ -45,12 +45,12 @@ end
 -- ACCESS DENIED GUI
 ----------------------------------------------------
 if not isWhitelisted then
-    if game:GetService("CoreGui"):FindFirstChild("AccessDeniedGui_NoneUserHub") then
-        game:GetService("CoreGui").AccessDeniedGui_NoneUserHub:Destroy()
+    if game:GetService("CoreGui"):FindFirstChild("AccessDeniedGui_PainKillers") then
+        game:GetService("CoreGui").AccessDeniedGui_PainKillers:Destroy()
     end
 
     local DeniedGui = Instance.new("ScreenGui")
-    DeniedGui.Name = "AccessDeniedGui_NoneUserHub"
+    DeniedGui.Name = "AccessDeniedGui_PainKillers"
     DeniedGui.ResetOnSpawn = false
 
     pcall(function()
@@ -79,7 +79,7 @@ if not isWhitelisted then
     DeniedTitle.Size = UDim2.new(1, -20, 0, 28)
     DeniedTitle.Position = UDim2.new(0, 10, 0, 0)
     DeniedTitle.BackgroundTransparency = 1
-    DeniedTitle.Text = "Rolling Glitch - NoneUserHub"
+    DeniedTitle.Text = "Rolling Glitch - PainKillers by Angry66gsjjd"
     DeniedTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     DeniedTitle.TextSize = 13
     DeniedTitle.Font = Enum.Font.SourceSansBold
@@ -154,15 +154,15 @@ getgenv().AutoRolling = false
 getgenv().AutoReset = false
 getgenv().ResetDelay = 1.0
 
-if game:GetService("CoreGui"):FindFirstChild("DupeGlitchGui_NoneUserHub") then
-    game:GetService("CoreGui").DupeGlitchGui_NoneUserHub:Destroy()
+if game:GetService("CoreGui"):FindFirstChild("DupeGlitchGui_PainKillers") then
+    game:GetService("CoreGui").DupeGlitchGui_PainKillers:Destroy()
 end
 
 ----------------------------------------------------
 -- UI CREATION
 ----------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DupeGlitchGui_NoneUserHub"
+ScreenGui.Name = "DupeGlitchGui_PainKillers"
 ScreenGui.ResetOnSpawn = false
 
 pcall(function()
@@ -194,7 +194,7 @@ Title.Name = "Title"
 Title.Size = UDim2.new(1, -35, 0, 32)
 Title.Position = UDim2.new(0, 8, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Rolling Glitch - NoneUserHub"
+Title.Text = "Rolling Glitch - PainKillers"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.SourceSansBold
