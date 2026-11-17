@@ -52,8 +52,32 @@ MainTab:AddLabel("Твой ID: " .. game.Players.LocalPlayer.UserId)
 
 ScriptsTab:AddLabel("Нажми на кнопку, чтобы загрузить скрипт")
 
+-- ============================================
+--  ФУНКЦИЯ ЗАКРЫТИЯ МЕНЮ ХАБА
+-- ============================================
+local function CloseHub()
+    pcall(function()
+        -- Пробуем все возможные методы закрытия окна у lib
+        if v6.Destroy then v6:Destroy() end
+        if v6.Close then v6:Close() end
+        if v6.Remove then v6:Remove() end
+        if v6.Hide then v6:Hide() end
+        if v6.SetVisible then v6:SetVisible(false) end
+    end)
+    -- Дополнительно: скрываем все ScreenGui, созданные хабом
+    pcall(function()
+        for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
+            if gui:IsA("ScreenGui") and gui.Name ~= "AFK_BlackScreen_System" then
+                -- не трогаем Rayfield, только потенциальные GUI хаба
+            end
+        end
+    end)
+end
+
 -- Кнопка 1: Загрузка основного скрипта
 ScriptsTab:AddButton("📜 Загрузить Основной Скрипт", function()
+    CloseHub()
+    task.wait(0.3) -- даём время закрыться старому UI
     local success, err = pcall(function()
         loadstring(game:HttpGet(LINKS.MainScript))()
     end)
@@ -62,6 +86,8 @@ end)
 
 -- Кнопка 2: Загрузка дюпа
 ScriptsTab:AddButton("💎 Загрузить Dupe Glitch", function()
+    CloseHub()
+    task.wait(0.3)
     local success, err = pcall(function()
         loadstring(game:HttpGet(LINKS.Dupe))()
     end)
@@ -70,6 +96,8 @@ end)
 
 -- Кнопка 3: Spy Items
 ScriptsTab:AddButton("🕵️ Загрузить Spy Items", function()
+    CloseHub()
+    task.wait(0.3)
     local success, err = pcall(function()
         loadstring(game:HttpGet(LINKS.SpyItems))()
     end)
