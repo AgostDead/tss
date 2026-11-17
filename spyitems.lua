@@ -1,4 +1,4 @@
--- ISpySomeonesItems - TSS Script NoneUserHub (Section Headings in List)
+-- ISpySomeonesItems - TSS Script PainKillers by Angry66gsjjd (Section Headings in List)
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
@@ -138,7 +138,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 8, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "ISpySomeonesItems - TSS Script NoneUserHub"
+TitleText.Text = "ISpySomeonesItems - TSS Script PainKillers by Angry66gsjjd"
 TitleText.TextColor3 = Color3.fromRGB(220, 220, 240)
 TitleText.TextSize = 11
 TitleText.Font = Enum.Font.SourceSansBold
