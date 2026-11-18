@@ -27,7 +27,7 @@ end
 
 if not isWhitelisted then
     local success, whitelistTable = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/whitlistdupe"))()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/tss/main/whitelist.txt"))()
     end)
 
     if success and whitelistTable then
