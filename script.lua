@@ -473,65 +473,83 @@ for i = 1, 6 do
 end
 
 -- ============================================================
--- ИСПРАВЛЕННЫЙ БЛОК: Sacrifice -> Ascension (Строго по очереди)
+-- ИСПРАВЛЕННЫЙ БЛОК v2: Sacrifice -> Ascension (ждём ЛЮБУЮ статку)
 -- ============================================================
+
+-- Снимок всех числовых стат (ValueBase) в Stats
+local function GetStatsSnapshot()
+    local snapshot = {}
+    local stats = LocalPlayer:FindFirstChild("Stats")
+    if not stats then return snapshot end
+    for _, obj in ipairs(stats:GetDescendants()) do
+        if obj:IsA("ValueBase") then
+            local ok, val = pcall(function() return obj.Value end)
+            if ok and type(val) == "number" then
+                snapshot[obj:GetFullName()] = val
+            end
+        end
+    end
+    return snapshot
+end
+
+-- Ждём изменения любой статы (или таймаут)
+local function WaitForAnyStatChange(prevSnapshot, timeout)
+    local startTime = tick()
+    while tick() - startTime < (timeout or 4) do
+        local now = GetStatsSnapshot()
+        for name, oldVal in pairs(prevSnapshot) do
+            local newVal = now[name]
+            if newVal ~= nil and newVal ~= oldVal then
+                return true, name, oldVal, newVal
+            end
+        end
+        task.wait(0.1)
+    end
+    return false
+end
+
 task.spawn(function()
     local remoteFolder = game:GetService("ReplicatedStorage")
         :WaitForChild("Remote")
         :WaitForChild("FromLocalForServer")
         :WaitForChild("Get")
 
-    -- Функция для ожидания изменения статов
-    local function WaitForStatChange(timeout)
-        local stats = LocalPlayer:FindFirstChild("Stats")
-        if not stats then return end
-        
-        -- Запоминаем начальные значения
-        local before = {}
-        for _, v in ipairs(stats:GetDescendants()) do
-            if v:IsA("ValueBase") and type(v.Value) == "number" then
-                before[v] = v.Value
-            end
-        end
-        
-        -- Ждем изменения (до timeout секунд)
-        local start = tick()
-        while tick() - start < timeout do
-            for obj, oldVal in pairs(before) do
-                if obj.Parent and obj.Value ~= oldVal then
-                    return true -- Изменение произошло!
-                end
-            end
-            task.wait(0.1)
-        end
-        return false -- Не дождались
-    end
-
-    -- Основной цикл для каждой пары (1-6)
     for i = 1, 6 do
         task.spawn(function()
             while true do
                 local sacEnabled = getgenv()["AutoSac" .. i]
                 local ascEnabled = getgenv()["AutoAsc" .. i]
 
-                if sacEnabled or ascEnabled then
+                if not sacEnabled and not ascEnabled then
+                    task.wait(0.2)
+                else
                     local sacRemote = remoteFolder:FindFirstChild("sac" .. i)
                     local ascRemote = remoteFolder:FindFirstChild("asc" .. i)
 
-                    -- ШАГ 1: Сначала делаем SAC
+                    -- ШАГ 1: SACRIFICE
                     if sacEnabled and sacRemote then
+                        local before = GetStatsSnapshot()
                         sacRemote:FireServer()
-                        WaitForStatChange(2) -- Ждем до 2 секунд, чтобы стата обновилась
+                        local changed, statName, oldV, newV = WaitForAnyStatChange(before, 4)
+                        -- print("[Sac "..i.."] changed:", statName, oldV, "->", newV)  -- раскомментируй для диагностики
+                        if not changed then
+                            sacRemote:FireServer()
+                            WaitForAnyStatChange(before, 4)
+                        end
                     end
 
-                    -- ШАГ 2: Потом делаем ASC (только если включен!)
+                    -- ШАГ 2: ASCENSION (только после Sac)
                     if ascEnabled and ascRemote then
+                        local before = GetStatsSnapshot()
                         ascRemote:FireServer()
-                        WaitForStatChange(2) -- Ждем до 2 секунд
+                        local changed, statName, oldV, newV = WaitForAnyStatChange(before, 4)
+                        -- print("[Asc "..i.."] changed:", statName, oldV, "->", newV)  -- раскомментируй для диагностики
+                        if not changed then
+                            ascRemote:FireServer()
+                            WaitForAnyStatChange(before, 4)
+                        end
                     end
-                    
-                    task.wait(0.5) -- Небольшая пауза, чтобы не спамить сервер
-                else
+
                     task.wait(0.2)
                 end
             end
