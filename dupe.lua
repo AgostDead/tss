@@ -5,12 +5,15 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local BuiltInWhitelist = {
-    9295465868,
-    9296975586, 
-    2633136710,
-    26388,
-    11569438,
-    11274033902,
+11699864053,
+9296975586,
+9296838377,
+26388,
+11569438,
+11274033902,
+11699853645,
+11699863643,
+11699863211,
 }
 
 local isWhitelisted = false
