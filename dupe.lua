@@ -15,6 +15,7 @@ local BuiltInWhitelist = {
 11699863643,
 11699863211,
 9295465868,
+4802853302,
 }
 
 local isWhitelisted = false
