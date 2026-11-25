@@ -114,7 +114,7 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
     end
 end)
 
-local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/AgostDead/PainKillerHUB/main/PainKillerLib.lua"))()
+local Rayfield = loadstring(game:HttpGet("https://github.com/UnknownDeveloper-sqd/LuauScripts/raw/refs/heads/main/Scripts/Simple%20GUI%20v2.6"))()
 
 --loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 --loadstring(game:HttpGet("https://pastebin.com/raw/AVMVm72L"))()
