@@ -163,6 +163,7 @@ getgenv().AutoBossGreen = false
 
 getgenv().AutoBossMulti_8_43 = false
 getgenv().AutoBossMulti_8_200 = false
+getgenv().AutoBossMulti_43_200 = false
 getgenv().AutoBossMulti_8_1K = false
 
 getgenv().AutoJoinBattle = false
@@ -821,10 +822,9 @@ local function GetBossSpawnData(bossName)
             and workspace.RespawnMobs[bossName][bossName]:FindFirstChild(bossName)
 
         if mobFolder then
-            local collisionPart = mobFolder:FindFirstChild("Collision")
-            if collisionPart then
-                collisionPart:Destroy()
-            end
+            -- ❌ УБРАНО Destroy Collision (фикс бага "босс не запускается")
+            -- local collisionPart = mobFolder:FindFirstChild("Collision")
+            -- if collisionPart then collisionPart:Destroy() end
 
             head = mobFolder:FindFirstChild("Head") or mobFolder:FindFirstChild("HumanoidRootPart") or mobFolder:FindFirstChildOfClass("BasePart")
             if head then
@@ -889,6 +889,7 @@ local BossToggleFlags = {
     "AutoBossGreenFlag",
     "AutoBossMulti_8_43_Flag",
     "AutoBossMulti_8_200_Flag",
+    "AutoBossMulti_43_200_Flag", -- НОВЫЙ ФЛАГ
     "AutoBossMulti_8_1K_Flag"
 }
 
@@ -900,6 +901,7 @@ local function DisableOtherBossToggles(currentFlag)
 
     getgenv().AutoBossMulti_8_43 = (currentFlag == "AutoBossMulti_8_43_Flag")
     getgenv().AutoBossMulti_8_200 = (currentFlag == "AutoBossMulti_8_200_Flag")
+    getgenv().AutoBossMulti_43_200 = (currentFlag == "AutoBossMulti_43_200_Flag") -- НОВАЯ СТРОКА
     getgenv().AutoBossMulti_8_1K = (currentFlag == "AutoBossMulti_8_1K_Flag")
 
     currentWaitingBoss = nil 
@@ -972,6 +974,16 @@ BossTab:CreateToggle({
    end,
 })
 
+-- НОВЫЙ ТУМБЛЕР 43 -> 200
+BossTab:CreateToggle({
+   Name = "🔄 Auto Boss lvl 43 -> 200",
+   CurrentValue = false,
+   Flag = "AutoBossMulti_43_200_Flag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossMulti_43_200_Flag") else getgenv().AutoBossMulti_43_200 = false end
+   end,
+})
+
 BossTab:CreateToggle({
    Name = "🔄 Auto Boss lvl 8 -> 1K",
    CurrentValue = false,
@@ -1007,10 +1019,19 @@ local function AttackBossTarget(headPart)
 
     hrp.CFrame = headPart.CFrame * CFrame.new(0, 5, 0)
 
+    -- 🔥 ФИКС ДЛЯ ТВОЕГО 47К FPS: ждём, чтобы сервер зафиксировал телепорт
+    task.wait(0.3)
+
+    EquipCombatTool()
+    task.wait(0.1)
+
     local combat = char:FindFirstChild("Combat")
     if combat and combat:FindFirstChild("RemoteUse") then
         combat.RemoteUse:FireServer(LocalPlayer)
     end
+
+    -- Пауза перед следующим ударом
+    task.wait(0.15)
 end
 
 local function ExecuteBossLogic(bossList)
@@ -1025,7 +1046,6 @@ local function ExecuteBossLogic(bossList)
         local head, healthStr = GetBossSpawnData(activeTargetBoss)
         if head and healthStr and healthStr ~= "0" then
             AttackBossTarget(head)
-            task.wait(0.025)
             return
         else
             activeTargetBoss = nil
@@ -1038,7 +1058,7 @@ local function ExecuteBossLogic(bossList)
             end
 
             isBossWaitingDelay = true
-            task.wait(2.5)
+            task.wait(1.5) -- Уменьшили паузу после убийства
             isBossWaitingDelay = false
 
             return
@@ -1054,7 +1074,6 @@ local function ExecuteBossLogic(bossList)
             currentWaitingBoss = nil
             
             AttackBossTarget(fHead)
-            task.wait(0.025)
             return
         end
     end
@@ -1068,7 +1087,6 @@ local function ExecuteBossLogic(bossList)
             currentWaitingBoss = nil
             
             AttackBossTarget(head)
-            task.wait(0.025)
             return
         end
     end
@@ -1123,6 +1141,11 @@ task.spawn(function()
                 {name = "Muscle", pos = Vector3.new(357, 4, 302)},
                 {name = "White", pos = Vector3.new(-245, 49, -19)}
             })
+        elseif getgenv().AutoBossMulti_43_200 then -- НОВАЯ ЛОГИКА
+            ExecuteBossLogic({
+                {name = "Muscle", pos = Vector3.new(357, 4, 302)},
+                {name = "White", pos = Vector3.new(-245, 49, -19)}
+            })
         elseif getgenv().AutoBossMulti_8_1K then
             ExecuteBossLogic({
                 {name = "Titan", pos = Vector3.new(383, 4, -173)},
@@ -1132,7 +1155,7 @@ task.spawn(function()
             })
         end
 
-        task.wait(0.025)
+        task.wait(0.1) -- 🔥 УВЕЛИЧИЛИ ЗАДЕРЖКУ СПАМА (было 0.025)
     end
 end)
 
@@ -1449,6 +1472,11 @@ CreditTab:CreateParagraph({
 local UpdateTab = Window:CreateTab("📢 Update", 4483362458)
 
 UpdateTab:CreateSection("— Latest Changelog —")
+
+UpdateTab:CreateParagraph({
+    Title = "📩 What's new in v1.6.6?",
+    Content = "• In Version 1.6.6\nWe added\n- Multi Boss 43 -> 200\n- Auto Farm sync fix for high FPS"
+})
 
 UpdateTab:CreateParagraph({
     Title = "📩 What's new in v1.6.5?",
@@ -1833,7 +1861,7 @@ end)
 
 Rayfield:Notify({
    Title = "Update Complete!",
-   Content = "Version v1.6.5",
+   Content = "Version v1.6.6",
    Duration = 5,
    Image = 4483362458,
 })
