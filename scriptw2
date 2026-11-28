@@ -1,0 +1,1512 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local HttpService = game:GetService("HttpService")
+
+-- ================= CONFIG =================
+local OWNER_USER_ID = 9295465868
+
+local GITHUB_BASE   = "https://raw.githubusercontent.com/AgostDead/tss/main/"
+local BLACKLIST_URL = GITHUB_BASE .. "blacklist.json"
+local DUPE_URL      = GITHUB_BASE .. "dupe.lua"
+local HUB_URL       = GITHUB_BASE .. "hub.lua"
+local SPY_URL       = GITHUB_BASE .. "spyitems.lua"
+local WHITELIST_URL = GITHUB_BASE .. "whitelist.txt"
+
+-- Вебхуки отключены (заглушки, как в вашем script.lua)
+local EXEC_WEBHOOK    = "-"
+local COMMENT_WEBHOOK = "-"
+
+local THEME_FILE = "TSS_Theme.json"
+-- ==========================================
+
+-- ---- Universal HTTP Request ----
+local function getRequestFunc()
+    return request or http_request or (http and http.request)
+        or (syn and syn.request) or (fluxus and fluxus.request)
+        or (krnl and krnl.request) or (delta and delta.request)
+        or (codex and codex.request)
+end
+
+local function universalRequest(options)
+    local req = getRequestFunc()
+    if req then
+        local ok, res = pcall(req, options)
+        if ok then return res end
+    end
+    return nil
+end
+
+local function universalHttpGet(url)
+    if game and game.HttpGet then
+        local ok, res = pcall(function() return game:HttpGet(url) end)
+        if ok and res then return res end
+    end
+    if http and http.get then
+        local ok, res = pcall(function() return http.get(url) end)
+        if ok and res then return res end
+    end
+    local res = universalRequest({ Url = url, Method = "GET" })
+    return res and res.Body or nil
+end
+
+-- ---- Theme persistence ----
+local savedTheme = "Default"
+local currentTheme = "Default"
+local activeConfigName = "Default"
+local targetConfigName = ""
+
+pcall(function()
+    if isfile(THEME_FILE) then
+        local data = HttpService:JSONDecode(readfile(THEME_FILE))
+        if data and data.ThemeName then
+            savedTheme = data.ThemeName
+            currentTheme = data.ThemeName
+        end
+    end
+end)
+
+-- ---- Blacklist ----
+local bannedUsersList = {}
+local function CheckBan()
+    local response = universalHttpGet(BLACKLIST_URL)
+    if response and response ~= "" then
+        local ok, banned = pcall(function() return HttpService:JSONDecode(response) end)
+        if ok and type(banned) == "table" then
+            bannedUsersList = banned
+            for _, id in ipairs(banned) do
+                if tonumber(id) == LocalPlayer.UserId then
+                    LocalPlayer:Kick("\n\n🔨 [BLACKLIST]\nYou have been banned.\nReason: Blacklisted by Creator")
+                    task.wait(9e9)
+                end
+            end
+        else
+            warn("[Blacklist] JSON parse error!")
+        end
+    else
+        warn("[Blacklist] Failed to fetch list.")
+    end
+end
+CheckBan()
+
+-- ---- Sound helper ----
+local function playSound(soundId, volume)
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://" .. tostring(soundId)
+        s.Volume = volume or 0.6
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        s.Ended:Connect(function() s:Destroy() end)
+    end)
+end
+
+-- ---- Owner tag ----
+local IsOwnerInServer = "False (in this server)"
+local function SetupOwnerTag(player)
+    if player.UserId ~= OWNER_USER_ID then return end
+    local function ApplyTag(character)
+        local head = character:WaitForChild("Head", 10)
+        if head and not head:FindFirstChild("OwnerBillboardGui") then
+            local bb = Instance.new("BillboardGui")
+            bb.Name = "OwnerBillboardGui"
+            bb.Size = UDim2.new(0, 200, 0, 50)
+            bb.StudsOffset = Vector3.new(0, 3, 0)
+            bb.AlwaysOnTop = true
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = "👑Hub Owner👑"
+            label.TextColor3 = Color3.fromRGB(255, 215, 0)
+            label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            label.TextStrokeTransparency = 0
+            label.TextSize = 20
+            label.Font = Enum.Font.SourceSansBold
+            label.Parent = bb
+            bb.Parent = head
+        end
+    end
+    if player.Character then ApplyTag(player.Character) end
+    player.CharacterAdded:Connect(ApplyTag)
+end
+for _, p in ipairs(Players:GetPlayers()) do SetupOwnerTag(p) end
+Players.PlayerAdded:Connect(SetupOwnerTag)
+
+if Players:GetPlayerByUserId(OWNER_USER_ID) then
+    IsOwnerInServer = "True (in this server) 👑"
+    task.spawn(function() task.wait(1.5) playSound(12221944, 0.8) end)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player.UserId == OWNER_USER_ID then
+        playSound(12221944, 0.8)
+        if Rayfield then
+            Rayfield:Notify({ Title = "TSS Alert", Content = "Creator has joined the game!", Duration = 5 })
+        end
+    end
+end)
+
+-- ==========================================
+-- 🚀 LOAD CUSTOM RAYFIELD
+-- ==========================================
+local Rayfield = nil
+pcall(function()
+    Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/UnknownDeveloper-sqd/UnknownSquad-RayField-Lib/refs/heads/main/Rayfield/CustomRayfield.luau"))()
+end)
+if not Rayfield then
+    warn("[TSS] Failed to load CustomRayfield library.")
+    return
+end
+
+local Window = Rayfield:CreateWindow({
+    Name = "TSS Script (World 2)",
+    LoadingTitle = "Loading",
+    LoadingSubtitle = "Made by AgostDead",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "TSSHub",
+        FileName = "TSSConfig_W2"
+    },
+    KeySystem = false,
+    Theme = savedTheme
+})
+
+-- ---- Globals ----
+getgenv().AutoCollect = false; getgenv().CollectSpeed = 0.05
+getgenv().AutoCrown = false; getgenv().ImmuneMyself = false
+getgenv().AutoCombat = false; getgenv().AutoEquipCombat = false; getgenv().AutoEquipWeight = false
+getgenv().LockPosition = false; getgenv().SavedCFrame = nil
+for i = 4, 6 do getgenv()["AutoSac" .. i] = false end
+for i = 5, 6 do getgenv()["AutoAsc" .. i] = false end
+getgenv().AutoSolution = false; getgenv().HideAnswer = false
+getgenv().DelayMin = 0.5; getgenv().DelayMax = 1.0
+getgenv().WS_Value = nil; getgenv().JP_Value = nil
+getgenv().AutoBossMuscle = false; getgenv().AutoBossWhite = false; getgenv().AutoBossGreen = false
+getgenv().AutoBossMulti_43_200 = false; getgenv().AutoBossMulti_43_1K = false
+getgenv().AutoJoinBattle = false; getgenv().AutoResetRNG = false; getgenv().ResetDelay = 1
+getgenv().LowGraphics = false; getgenv().NightTimeMode = false
+getgenv().AutoJumpAFK = false; getgenv().AutoJumpDelay = 5
+getgenv().EnableFPSLimit = false; getgenv().TargetFPS = 60
+getgenv().TargetBoxName = ""; getgenv().AutoOpenBox = false
+
+-- ---- AFK black frame ----
+local AFKStartTime = 0
+local BlackFrameGui = Instance.new("ScreenGui")
+local BlackFrame   = Instance.new("Frame")
+local TimerLabel   = Instance.new("TextLabel")
+local BlackFPSLabel= Instance.new("TextLabel")
+
+BlackFrameGui.Name = "AFK_BlackScreen_System"
+BlackFrameGui.IgnoreGuiInset = true
+BlackFrameGui.Enabled = false
+BlackFrame.Size = UDim2.new(1, 0, 1, 0)
+BlackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BlackFrame.Parent = BlackFrameGui
+
+TimerLabel.Size = UDim2.new(1, 0, 0, 50)
+TimerLabel.Position = UDim2.new(0, 0, 0.5, -40)
+TimerLabel.BackgroundTransparency = 1
+TimerLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+TimerLabel.TextSize = 24
+TimerLabel.Font = Enum.Font.SourceSansBold
+TimerLabel.Text = "AFKing Off"
+TimerLabel.Parent = BlackFrame
+
+BlackFPSLabel.Size = UDim2.new(1, 0, 0, 30)
+BlackFPSLabel.Position = UDim2.new(0, 0, 0.5, 20)
+BlackFPSLabel.BackgroundTransparency = 1
+BlackFPSLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+BlackFPSLabel.TextSize = 18
+BlackFPSLabel.Text = "FPS: --"
+BlackFPSLabel.Parent = BlackFrame
+
+pcall(function() BlackFrameGui.Parent = game:GetService("CoreGui") end)
+
+task.spawn(function()
+    while true do
+        if BlackFrameGui.Enabled then
+            local elapsed = os.time() - AFKStartTime
+            local h = math.floor(elapsed / 3600)
+            local m = math.floor((elapsed % 3600) / 60)
+            local s = elapsed % 60
+            TimerLabel.Text = string.format("AFKing On.. Time AFKing: [%02d:%02d:%02d]", h, m, s)
+        end
+        task.wait(1)
+    end
+end)
+
+local function SafeTP(pos)
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart", 5)
+    if hrp then hrp.CFrame = CFrame.new(pos) end
+end
+
+----------------------------------------------------
+-- 👑 OWNER PANEL (локально, без Firebase)
+----------------------------------------------------
+if LocalPlayer.UserId == OWNER_USER_ID then
+    local OwnerTab = Window:CreateTab("👑 Owner Panel", 4483362458)
+    local targetOwnerMessage = ""
+    local targetSinglePlayer = ""
+
+    OwnerTab:CreateSection("— Owner Announcement (local only) —")
+
+    OwnerTab:CreateInput({
+        Name = "💬 Input Message",
+        PlaceholderText = "Enter announcement / message...",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text) targetOwnerMessage = Text end,
+    })
+
+    OwnerTab:CreateInput({
+        Name = "👤 Target Player (empty = ALL)",
+        PlaceholderText = "Enter Username or DisplayName...",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text) targetSinglePlayer = Text end,
+    })
+
+    local function BroadcastLocal(target, title)
+        if targetOwnerMessage == "" then
+            return Rayfield:Notify({ Title = "Owner System", Content = "Please enter a message first!", Duration = 3 })
+        end
+        -- Локальное уведомление (без внешних запросов)
+        Rayfield:Notify({
+            Title = title,
+            Content = "[" .. target .. "] " .. targetOwnerMessage,
+            Duration = 6,
+            Image = 4483362458
+        })
+    end
+
+    OwnerTab:CreateButton({
+        Name = "📩 Send to Single Player (local)",
+        Callback = function()
+            if targetSinglePlayer == "" then
+                return Rayfield:Notify({ Title = "Owner System", Content = "Enter target username!", Duration = 3 })
+            end
+            BroadcastLocal(targetSinglePlayer, "📩 Message from Owner")
+        end,
+    })
+
+    OwnerTab:CreateButton({
+        Name = "📢 Send to All Players (local)",
+        Callback = function() BroadcastLocal("ALL", "📢 Global message from Owner") end,
+    })
+end
+
+----------------------------------------------------
+-- 🌐 MAIN TAB
+----------------------------------------------------
+local MainTab = Window:CreateTab("🌐 Main", 4483362458)
+
+MainTab:CreateToggle({
+   Name = "💧 Auto Collect Drops",
+   CurrentValue = false,
+   Flag = "CollectFlag",
+   Callback = function(Value)
+      getgenv().AutoCollect = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().AutoCollect do
+               local char = LocalPlayer.Character
+               if char and char:FindFirstChild("Head") then
+                  local worlds = {"World1","World2","World3","World4","World5","World6","World7","World8","World9"}
+                  for _, wName in pairs(worlds) do
+                     local folder = workspace:FindFirstChild("Add") and workspace.Add:FindFirstChild(wName)
+                     if folder then
+                        for _, item in pairs(folder:GetChildren()) do
+                           if item:IsA("BasePart") then
+                              item.CanCollide = false
+                              item.CFrame = char.Head.CFrame
+                           end
+                        end
+                     end
+                  end
+               end
+               task.wait(getgenv().CollectSpeed)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateInput({
+   Name = "💧 Collect Speed ⚡️",
+   PlaceholderText = "Default: 0.05",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      getgenv().CollectSpeed = tonumber(Text) or 0.05
+   end,
+})
+
+MainTab:CreateSection("— Player Utilities —")
+
+MainTab:CreateToggle({
+   Name = "👑 Auto Get Crown (Tp)",
+   CurrentValue = false,
+   Flag = "CrownFlag",
+   Callback = function(Value)
+      getgenv().AutoCrown = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().AutoCrown do
+               SafeTP(Vector3.new(-11, 5, -152))
+               task.wait(0.5)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "🛡️ Immune Myself",
+   CurrentValue = false,
+   Flag = "ImmuneMyselfFlag",
+   Callback = function(Value)
+      getgenv().ImmuneMyself = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().ImmuneMyself do
+               pcall(function()
+                  local safePart = workspace:FindFirstChild("Area") and workspace.Area:FindFirstChild("Safe") and workspace.Area.Safe:FindFirstChild("world")
+                  local char = LocalPlayer.Character
+                  local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                  if safePart and hrp then
+                     firetouchinterest(hrp, safePart, 0)
+                     task.wait()
+                     firetouchinterest(hrp, safePart, 1)
+                  end
+               end)
+               task.wait(0.01)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "🥊 Auto Combat",
+   CurrentValue = false,
+   Flag = "CombatFlag",
+   Callback = function(Value)
+      getgenv().AutoCombat = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().AutoCombat do
+               local char = LocalPlayer.Character
+               if char and char:FindFirstChild("Combat") then
+                  char.Combat.RemoteUse:FireServer(LocalPlayer)
+               end
+               task.wait(0.1)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "🥊 Auto Equip Combat",
+   CurrentValue = false,
+   Flag = "EquipCombatFlag",
+   Callback = function(Value)
+      getgenv().AutoEquipCombat = Value
+      if Value then
+         if getgenv().AutoEquipWeight then
+            getgenv().AutoEquipWeight = false
+            if Rayfield.Flags["EquipWeightFlag"] then Rayfield.Flags["EquipWeightFlag"]:Set(false) end
+         end
+         task.spawn(function()
+            while getgenv().AutoEquipCombat do
+               local backpack = LocalPlayer:FindFirstChild("Backpack")
+               local char = LocalPlayer.Character
+               if backpack and char then
+                  local tool = backpack:FindFirstChild("Combat")
+                  if tool and not char:FindFirstChild("Combat") and char:FindFirstChildOfClass("Humanoid") then
+                     char:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
+                  end
+               end
+               task.wait(0.5)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "🏋️ Auto Equip Weight",
+   CurrentValue = false,
+   Flag = "EquipWeightFlag",
+   Callback = function(Value)
+      getgenv().AutoEquipWeight = Value
+      if Value then
+         if getgenv().AutoEquipCombat then
+            getgenv().AutoEquipCombat = false
+            if Rayfield.Flags["EquipCombatFlag"] then Rayfield.Flags["EquipCombatFlag"]:Set(false) end
+         end
+         task.spawn(function()
+            while getgenv().AutoEquipWeight do
+               local backpack = LocalPlayer:FindFirstChild("Backpack")
+               local char = LocalPlayer.Character
+               if backpack and char then
+                  local tool = backpack:FindFirstChild("Weight")
+                  if tool and not char:FindFirstChild("Weight") and char:FindFirstChildOfClass("Humanoid") then
+                     char:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
+                  end
+               end
+               task.wait(0.5)
+            end
+         end)
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "🔒 Lock Position [Sac & Asc]",
+   CurrentValue = false,
+   Flag = "LockPosFlag",
+   Callback = function(Value)
+      getgenv().LockPosition = Value
+      if Value then
+         local char = LocalPlayer.Character
+         local hrp = char and char:FindFirstChild("HumanoidRootPart")
+         if hrp then getgenv().SavedCFrame = hrp.CFrame end
+         task.spawn(function()
+            while getgenv().LockPosition do
+               local c = LocalPlayer.Character
+               local h = c and c:FindFirstChild("HumanoidRootPart")
+               local hum = c and c:FindFirstChildOfClass("Humanoid")
+               if h and getgenv().SavedCFrame and hum and hum.Health > 0
+                  and (h.Position - getgenv().SavedCFrame.Position).Magnitude > 3 then
+                  h.CFrame = getgenv().SavedCFrame
+               end
+               task.wait(0.1)
+            end
+         end)
+      else
+         getgenv().SavedCFrame = nil
+      end
+   end,
+})
+
+MainTab:CreateSection("— Sacrifice —")
+for i = 4, 6 do
+   MainTab:CreateToggle({
+      Name = "🔥 Auto Sac " .. i,
+      CurrentValue = false,
+      Flag = "SacFlag" .. i,
+      Callback = function(Value) getgenv()["AutoSac" .. i] = Value end,
+   })
+end
+
+MainTab:CreateSection("— Ascension —")
+for i = 5, 6 do
+   MainTab:CreateToggle({
+      Name = "✨️ Auto Asc " .. i,
+      CurrentValue = false,
+      Flag = "AscFlag" .. i,
+      Callback = function(Value) getgenv()["AutoAsc" .. i] = Value end,
+   })
+end
+
+task.spawn(function()
+   local remoteFolder = game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FromLocalForServer"):WaitForChild("Get")
+   while true do
+      local stats = LocalPlayer:FindFirstChild("Stats")
+      local levelObj = stats and stats:FindFirstChild("Level")
+      if levelObj then
+         for i = 4, 6 do
+            if getgenv()["AutoSac" .. i] then
+               local r = remoteFolder:FindFirstChild("sac" .. i)
+               if r then r:FireServer() end
+            end
+         end
+         for i = 5, 6 do
+            if getgenv()["AutoAsc" .. i] then
+               local r = remoteFolder:FindFirstChild("asc" .. i)
+               if r then r:FireServer() end
+            end
+         end
+      end
+      task.wait(0.3)
+   end
+end)
+
+MainTab:CreateSection("— Auto Solution ChatQuest V2 —")
+local SolutionLabel = MainTab:CreateLabel("Last Math: None | Reward: None")
+
+MainTab:CreateToggle({
+   Name = "🛑 Hide Answer",
+   CurrentValue = false,
+   Flag = "HideAnswerFlag",
+   Callback = function(Value) getgenv().HideAnswer = Value end,
+})
+MainTab:CreateInput({
+   Name = "🕛 Delay Answer Min",
+   PlaceholderText = "Default: 0.5",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local n = tonumber(Text); if n then getgenv().DelayMin = n end
+   end,
+})
+MainTab:CreateInput({
+   Name = "🕧 Delay Answer Max",
+   PlaceholderText = "Default: 1.0",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local n = tonumber(Text); if n then getgenv().DelayMax = n end
+   end,
+})
+
+local currentActiveMathMessage = ""
+local function solveAndAnswer(messageText, isManual)
+   if not getgenv().AutoSolution and not isManual then return end
+   local mathExpr = string.match(messageText, "What is%s+(.-)%s*%?")
+   local rewardText = string.match(messageText, "you get:%s*(.*)") or "Unknown"
+   if mathExpr then
+      local clean = string.gsub(mathExpr, "[^%d%+%-%*%/%^%.%s]", "")
+      local func = loadstring("return " .. clean)
+      if func then
+         local ok, result = pcall(func)
+         if ok and result then
+            local response = string.format("%.1f", result)
+            if response:sub(-2) == ".0" then response = string.format("%d", result) end
+            SolutionLabel:Set(string.format("%s = %s | Reward: %s", clean, response, rewardText))
+            local finalOutput = getgenv().HideAnswer and ("/e " .. response) or response
+            local TCS = game:GetService("TextChatService")
+            local ch = TCS.TextChannels:FindFirstChild("RBXGeneral")
+            if ch then
+               if not isManual then
+                  local delay = math.random(getgenv().DelayMin * 1000, getgenv().DelayMax * 1000) / 1000
+                  task.wait(delay)
+                  if getgenv().AutoSolution then ch:SendAsync(finalOutput) end
+               else
+                  ch:SendAsync(finalOutput)
+               end
+            end
+         end
+      end
+   end
+end
+
+local TCS = game:GetService("TextChatService")
+for _, channel in ipairs(TCS.TextChannels:GetChildren()) do
+   channel.MessageReceived:Connect(function(msg)
+      if msg.Text then
+         if string.find(msg.Text, "What is") and string.find(msg.Text, "?") then
+            currentActiveMathMessage = msg.Text
+         end
+         solveAndAnswer(msg.Text, false)
+      end
+   end)
+end
+
+MainTab:CreateToggle({
+   Name = "📄 Auto Solution",
+   CurrentValue = false,
+   Flag = "SolutionFlag",
+   Callback = function(Value) getgenv().AutoSolution = Value end,
+})
+MainTab:CreateButton({
+   Name = "🧩 Solve Math Now",
+   Callback = function()
+      if currentActiveMathMessage ~= "" then
+         solveAndAnswer(currentActiveMathMessage, true)
+         Rayfield:Notify({ Title = "Auto Solution", Content = "Math puzzle solved instantly!", Duration = 2 })
+      else
+         Rayfield:Notify({ Title = "Auto Solution", Content = "No active math puzzle found!", Duration = 3 })
+      end
+   end,
+})
+
+local addFolder = workspace:FindFirstChild("Add")
+if addFolder then
+   addFolder.DescendantAdded:Connect(function(upg)
+      if getgenv().AutoSolution and upg:IsA("BasePart") and upg:FindFirstChild("TouchInterest") then
+         local char = LocalPlayer.Character
+         local hrp = char and char:FindFirstChild("HumanoidRootPart")
+         if hrp then
+            firetouchinterest(hrp, upg, 0)
+            task.wait(0.1)
+            firetouchinterest(hrp, upg, 1)
+         end
+      end
+   end)
+end
+
+----------------------------------------------------
+-- 🌐 TELEPORT
+----------------------------------------------------
+local TPTab = Window:CreateTab("🌐 Teleport", 4483362458)
+local locations = {
+   ["Spawn"] = Vector3.new(225, 317, -106),
+   ["World 1K Lvl"] = Vector3.new(-184, 352, -183),
+   ["World 4K Lvl"] = Vector3.new(431, 370, -531),
+}
+for _, name in ipairs({"Spawn", "World 1K Lvl", "World 4K Lvl"}) do
+   TPTab:CreateButton({
+      Name = "Teleport to " .. name,
+      Callback = function()
+         local char = LocalPlayer.Character
+         local hrp = char and char:FindFirstChild("HumanoidRootPart")
+         if hrp then hrp.CFrame = CFrame.new(locations[name]) end
+      end,
+   })
+end
+
+----------------------------------------------------
+-- 🌐 PLAYERS
+----------------------------------------------------
+local PlayerTab = Window:CreateTab("🌐 Players", 4483362458)
+PlayerTab:CreateSlider({
+   Name = "⚡️ Walkspeed",
+   Range = {1, 125}, Increment = 1, Suffix = "Speed", CurrentValue = 16, Flag = "WS_Slider",
+   Callback = function(Value)
+      getgenv().WS_Value = Value
+      local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+      if hum then hum.WalkSpeed = Value end
+   end,
+})
+PlayerTab:CreateSlider({
+   Name = "⚡️ Jumppower",
+   Range = {1, 150}, Increment = 1, Suffix = "Power", CurrentValue = 50, Flag = "JP_Slider",
+   Callback = function(Value)
+      getgenv().JP_Value = Value
+      local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+      if hum then hum.JumpPower = Value end
+   end,
+})
+
+local function ApplyCustomStats(character)
+   local hum = character:WaitForChild("Humanoid", 5)
+   if not hum then return end
+   hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+      if getgenv().WS_Value ~= nil and hum.WalkSpeed ~= getgenv().WS_Value then hum.WalkSpeed = getgenv().WS_Value end
+   end)
+   hum:GetPropertyChangedSignal("JumpPower"):Connect(function()
+      if getgenv().JP_Value ~= nil and hum.JumpPower ~= getgenv().JP_Value then hum.JumpPower = getgenv().JP_Value end
+   end)
+   if getgenv().WS_Value ~= nil then hum.WalkSpeed = getgenv().WS_Value end
+   if getgenv().JP_Value ~= nil then hum.JumpPower = getgenv().JP_Value end
+end
+if LocalPlayer.Character then ApplyCustomStats(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(ApplyCustomStats)
+
+----------------------------------------------------
+-- 🌀 GLITCHES
+----------------------------------------------------
+local GlitchesTab = Window:CreateTab("🌀 Glitches", 4483362458)
+
+GlitchesTab:CreateButton({
+    Name = "Fire ISpySomeonesItems",
+    Callback = function()
+        loadstring(game:HttpGet(SPY_URL))()
+    end
+})
+
+GlitchesTab:CreateButton({
+    Name = "Fire Rolling Reward [LIMITED]",
+    Callback = function()
+        loadstring(game:HttpGet(DUPE_URL))()
+    end
+})
+
+----------------------------------------------------
+-- ⚔️ AUTO FARM
+----------------------------------------------------
+local BossTab = Window:CreateTab("⚔️ Auto Farm", 4483362458)
+
+local function EquipCombatTool()
+    pcall(function()
+        local bp = LocalPlayer:FindFirstChild("Backpack")
+        local char = LocalPlayer.Character
+        if bp and char then
+            local tool = bp:FindFirstChild("Combat")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if tool and not char:FindFirstChild("Combat") and hum then hum:EquipTool(tool) end
+        end
+    end)
+end
+
+BossTab:CreateSection("— All Bosses Status —")
+local CombinedStatusLabel = BossTab:CreateLabel("Muscle: ... | White: ... | Green: ...")
+
+local function GetBossSpawnData(bossName)
+    local head, healthStr
+    pcall(function()
+        local mobFolder = workspace:FindFirstChild("RespawnMobs")
+            and workspace.RespawnMobs:FindFirstChild(bossName)
+            and workspace.RespawnMobs[bossName]:FindFirstChild(bossName)
+            and workspace.RespawnMobs[bossName][bossName]:FindFirstChild(bossName)
+        if mobFolder then
+            local col = mobFolder:FindFirstChild("Collision")
+            if col then col:Destroy() end
+            head = mobFolder:FindFirstChild("Head") or mobFolder:FindFirstChild("HumanoidRootPart") or mobFolder:FindFirstChildOfClass("BasePart")
+            if head then
+                local hl = head:FindFirstChild("BillboardGui") and head.BillboardGui:FindFirstChild("Health2") and head.BillboardGui.Health2:FindFirstChild("Health1")
+                if hl and hl:IsA("TextLabel") then healthStr = hl.Text end
+            end
+        end
+    end)
+    return head, healthStr
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        local function checkState(name)
+            local status = "🚫"
+            pcall(function()
+                local wl = workspace:FindFirstChild("Bosses") and workspace.Bosses:FindFirstChild("Waiting")
+                    and workspace.Bosses.Waiting:FindFirstChild(name) and workspace.Bosses.Waiting[name]:FindFirstChild("Part")
+                    and workspace.Bosses.Waiting[name].Part:FindFirstChild("BillboardGui")
+                    and workspace.Bosses.Waiting[name].Part.BillboardGui:FindFirstChild("Time")
+                if wl and wl:IsA("TextLabel") then
+                    local t = string.lower(wl.Text)
+                    if string.find(t, "waiting") then status = "✅ (Waiting)"
+                    elseif string.find(t, "battle") then status = "⚔️ (Fighting)"
+                    elseif string.find(t, "available") then status = "⏳ (Cooldown)" end
+                end
+            end)
+            return status
+        end
+        CombinedStatusLabel:Set(string.format("Muscle: %s | White: %s | Green: %s",
+            checkState("Muscle"), checkState("White"), checkState("Green")))
+    end
+end)
+
+local currentSequenceIndex = 1
+local activeTargetBoss, isBossWaitingDelay = nil, false
+
+local BossToggleFlags = {
+    "AutoBossMuscleFlag","AutoBossWhiteFlag","AutoBossGreenFlag",
+    "AutoBossMulti_43_200_Flag","AutoBossMulti_43_1K_Flag"
+}
+local function DisableOtherBossToggles(currentFlag)
+    getgenv().AutoBossMuscle       = (currentFlag == "AutoBossMuscleFlag")
+    getgenv().AutoBossWhite        = (currentFlag == "AutoBossWhiteFlag")
+    getgenv().AutoBossGreen        = (currentFlag == "AutoBossGreenFlag")
+    getgenv().AutoBossMulti_43_200 = (currentFlag == "AutoBossMulti_43_200_Flag")
+    getgenv().AutoBossMulti_43_1K  = (currentFlag == "AutoBossMulti_43_1K_Flag")
+    currentSequenceIndex = 1
+    activeTargetBoss = nil
+    isBossWaitingDelay = false
+    for _, flag in ipairs(BossToggleFlags) do
+        if flag ~= currentFlag and Rayfield.Flags[flag] then
+            Rayfield.Flags[flag]:Set(false)
+        end
+    end
+end
+
+BossTab:CreateSection("— Single Boss —")
+
+BossTab:CreateToggle({
+   Name = "⚔️ Auto Boss lvl 43 (Muscle)",
+   CurrentValue = false,
+   Flag = "AutoBossMuscleFlag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossMuscleFlag") else getgenv().AutoBossMuscle = false end
+   end,
+})
+
+BossTab:CreateToggle({
+   Name = "⚔️ Auto Boss lvl 200 (White)",
+   CurrentValue = false,
+   Flag = "AutoBossWhiteFlag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossWhiteFlag") else getgenv().AutoBossWhite = false end
+   end,
+})
+
+BossTab:CreateToggle({
+   Name = "⚔️ Auto Boss lvl 1K (Green)",
+   CurrentValue = false,
+   Flag = "AutoBossGreenFlag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossGreenFlag") else getgenv().AutoBossGreen = false end
+   end,
+})
+
+BossTab:CreateSection("— Multi Boss (Loop) —")
+
+BossTab:CreateToggle({
+   Name = "🔄 Auto Boss lvl 43 -> 200",
+   CurrentValue = false,
+   Flag = "AutoBossMulti_43_200_Flag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossMulti_43_200_Flag") else getgenv().AutoBossMulti_43_200 = false end
+   end,
+})
+
+BossTab:CreateToggle({
+   Name = "🔄 Auto Boss lvl 43 -> 1K",
+   CurrentValue = false,
+   Flag = "AutoBossMulti_43_1K_Flag",
+   Callback = function(Value)
+      if Value then DisableOtherBossToggles("AutoBossMulti_43_1K_Flag") else getgenv().AutoBossMulti_43_1K = false end
+   end,
+})
+
+local function IsBossAvailableToWait(bossName)
+    local isAvailable = true
+    pcall(function()
+        local wl = workspace:FindFirstChild("Bosses") and workspace.Bosses:FindFirstChild("Waiting")
+            and workspace.Bosses.Waiting:FindFirstChild(bossName)
+            and workspace.Bosses.Waiting[bossName]:FindFirstChild("Part")
+            and workspace.Bosses.Waiting[bossName].Part:FindFirstChild("BillboardGui")
+            and workspace.Bosses.Waiting[bossName].Part.BillboardGui:FindFirstChild("Time")
+        if wl and wl:IsA("TextLabel") then
+            local t = string.lower(wl.Text)
+            if string.find(t, "available") then isAvailable = false end
+        end
+    end)
+    return isAvailable
+end
+
+local function AttackBossTarget(headPart)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp or not headPart then return end
+    hrp.CFrame = headPart.CFrame * CFrame.new(0, 5, 0)
+    EquipCombatTool()
+    local combat = char:FindFirstChild("Combat")
+    if combat and combat:FindFirstChild("RemoteUse") then
+        combat.RemoteUse:FireServer(LocalPlayer)
+    end
+end
+
+local function ExecuteBossLogic(bossList)
+    if isBossWaitingDelay then return end
+
+    EquipCombatTool()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if activeTargetBoss then
+        local head, healthStr = GetBossSpawnData(activeTargetBoss)
+        if head and healthStr and healthStr ~= "0" then
+            AttackBossTarget(head)
+            task.wait(0.025)
+            return
+        else
+            activeTargetBoss = nil
+            if currentSequenceIndex >= #bossList then
+                currentSequenceIndex = 1
+            else
+                currentSequenceIndex = currentSequenceIndex + 1
+            end
+            isBossWaitingDelay = true
+            task.wait(3)
+            isBossWaitingDelay = false
+            return
+        end
+    end
+
+    local firstBoss = bossList[1]
+    if currentSequenceIndex > 1 and firstBoss then
+        local fHead, fHealth = GetBossSpawnData(firstBoss.name)
+        if fHead and fHealth and fHealth ~= "0" then
+            currentSequenceIndex = 1
+            activeTargetBoss = firstBoss.name
+            AttackBossTarget(fHead)
+            task.wait(0.025)
+            return
+        end
+    end
+
+    for i = currentSequenceIndex, #bossList do
+        local b = bossList[i]
+        local head, healthStr = GetBossSpawnData(b.name)
+        if head and healthStr and healthStr ~= "0" then
+            currentSequenceIndex = i
+            activeTargetBoss = b.name
+            AttackBossTarget(head)
+            task.wait(0.025)
+            return
+        end
+    end
+
+    local targetWaitBoss = bossList[currentSequenceIndex]
+    if targetWaitBoss then
+        if IsBossAvailableToWait(targetWaitBoss.name) then
+            SafeTP(targetWaitBoss.pos)
+            task.wait(0.5)
+            return
+        else
+            for i = currentSequenceIndex + 1, #bossList do
+                if IsBossAvailableToWait(bossList[i].name) then
+                    currentSequenceIndex = i
+                    SafeTP(bossList[i].pos)
+                    task.wait(0.5)
+                    return
+                end
+            end
+        end
+    end
+
+    if #bossList > 0 and bossList[1].pos then
+        currentSequenceIndex = 1
+        SafeTP(bossList[1].pos)
+        task.wait(0.5)
+    end
+end
+
+task.spawn(function()
+    while true do
+        if getgenv().AutoBossMuscle then
+            ExecuteBossLogic({{name = "Muscle", pos = Vector3.new(317, 317, -25)}})
+        elseif getgenv().AutoBossWhite then
+            ExecuteBossLogic({{name = "White", pos = Vector3.new(116, 317, -43)}})
+        elseif getgenv().AutoBossGreen then
+            ExecuteBossLogic({{name = "Green", pos = Vector3.new(-150, 353, -169)}})
+        elseif getgenv().AutoBossMulti_43_200 then
+            ExecuteBossLogic({
+                {name = "Muscle", pos = Vector3.new(317, 317, -25)},
+                {name = "White", pos = Vector3.new(116, 317, -43)}
+            })
+        elseif getgenv().AutoBossMulti_43_1K then
+            ExecuteBossLogic({
+                {name = "Muscle", pos = Vector3.new(317, 317, -25)},
+                {name = "White", pos = Vector3.new(116, 317, -43)},
+                {name = "Green", pos = Vector3.new(-150, 353, -169)}
+            })
+        end
+        task.wait(0.025)
+    end
+end)
+
+----------------------------------------------------
+-- 📦 BOX
+----------------------------------------------------
+local BoxTab = Window:CreateTab("📦 Box", 4483362458)
+
+BoxTab:CreateSection("— Box Opener System —")
+
+BoxTab:CreateInput({
+   Name = "📦 Target Box Name",
+   PlaceholderText = 'Type "BoxNumber" (e.g. Box1, Box2)',
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text) getgenv().TargetBoxName = Text end,
+})
+
+BoxTab:CreateToggle({
+   Name = "🔄 Auto Open Box",
+   CurrentValue = false,
+   Flag = "AutoOpenBoxFlag",
+   Callback = function(Value)
+      getgenv().AutoOpenBox = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().AutoOpenBox do
+               if getgenv().TargetBoxName and getgenv().TargetBoxName ~= "" then
+                  pcall(function()
+                     local autoRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Remote")
+                        and game.ReplicatedStorage.Remote:FindFirstChild("FromServerForLocal")
+                        and game.ReplicatedStorage.Remote.FromServerForLocal:FindFirstChild("Box")
+                        and game.ReplicatedStorage.Remote.FromServerForLocal.Box:FindFirstChild("AutoOpen")
+                     if autoRemote then autoRemote:FireServer(getgenv().TargetBoxName) end
+                  end)
+               end
+               task.wait(0.1)
+            end
+         end)
+      end
+   end,
+})
+
+BoxTab:CreateButton({
+   Name = "🔓 Open Box (Once)",
+   Callback = function()
+      if not getgenv().TargetBoxName or getgenv().TargetBoxName == "" then
+         return Rayfield:Notify({ Title = "Box Opener", Content = "Enter a valid Box Name (e.g. Box1) first!", Duration = 3 })
+      end
+      local success = pcall(function()
+         local boxRemoteFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Remote")
+            and game.ReplicatedStorage.Remote:FindFirstChild("FromServerForLocal")
+            and game.ReplicatedStorage.Remote.FromServerForLocal:FindFirstChild("Box")
+         if boxRemoteFolder then
+            local specific = boxRemoteFolder:FindFirstChild(getgenv().TargetBoxName)
+            if specific then specific:FireServer() else boxRemoteFolder[getgenv().TargetBoxName]:FireServer() end
+         end
+      end)
+      if success then
+         Rayfield:Notify({ Title = "Box Opener", Content = "Fired Open Remote for " .. getgenv().TargetBoxName, Duration = 2 })
+      else
+         Rayfield:Notify({ Title = "Error", Content = "Could not find remote for: " .. getgenv().TargetBoxName, Duration = 3 })
+      end
+   end,
+})
+
+BoxTab:CreateSection("— Box Price List —")
+BoxTab:CreateParagraph({ Title = "💵 Cash Boxes", Content = "• Box1 = Free\n• Box2 = 1K Cash\n• Box3 = 1M Cash\n• Box4 = 1T Cash\n• Box5 = 1Sx Cash" })
+BoxTab:CreateParagraph({ Title = "✨ Ascension Boxes", Content = "• Box6 = 0.1 Asc\n• Box7 = 100 Asc\n• Box8 = 1K Asc\n• Box9 = 10K Asc\n• Box10 = 40K Asc\n• Box11 = 400K Asc" })
+BoxTab:CreateParagraph({ Title = "💎 Diamond Boxes", Content = "• DiamondBox1 = 10 Diamond\n• DiamondBox2 = 100 Diamond\n• DiamondBox3 = 300 Diamond" })
+BoxTab:CreateParagraph({ Title = "👑 Crown Boxes", Content = "• CrownBox1 = 1B Crown\n• CrownBox2 = 1T Crown" })
+
+----------------------------------------------------
+-- 💤 AFK MODE
+----------------------------------------------------
+local AFKTab = Window:CreateTab("💤 AFK Mode", 4483362458)
+local UIFPSLabel = AFKTab:CreateLabel("Current Hub FPS: --")
+
+local frameCount = 0
+local elapsedTime = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+    frameCount = frameCount + 1
+    elapsedTime = elapsedTime + deltaTime
+    if elapsedTime >= 0.1 then
+        local currentFPS = math.floor(frameCount / elapsedTime)
+        UIFPSLabel:Set("Current Hub FPS: " .. currentFPS)
+        if BlackFrameGui.Enabled then BlackFPSLabel.Text = "Current FPS: " .. currentFPS end
+        frameCount = 0
+        elapsedTime = 0
+    end
+end)
+
+AFKTab:CreateSection("— Graphics & Optimization —")
+AFKTab:CreateToggle({
+   Name = "📉 Force Graphics to Lowest",
+   CurrentValue = false,
+   Flag = "LowGraphicsFlag",
+   Callback = function(Value)
+      getgenv().LowGraphics = Value
+      if Value then
+         pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+      else
+         pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic end)
+      end
+   end,
+})
+
+AFKTab:CreateButton({
+   Name = "🗑️ Clear Map Textures",
+   Callback = function()
+      pcall(function()
+         for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Texture") or obj:IsA("Decal") or obj:IsA("Sky") then
+               obj:Destroy()
+            elseif obj:IsA("BasePart") then
+               obj.Material = Enum.Material.SmoothPlastic
+            end
+         end
+         Rayfield:Notify({ Title = "AFK Optimizer", Content = "All textures and decals cleared!", Duration = 3 })
+      end)
+   end,
+})
+
+AFKTab:CreateToggle({
+   Name = "🌙 Night Time Mode",
+   CurrentValue = false,
+   Flag = "NightTimeFlag",
+   Callback = function(Value)
+      getgenv().NightTimeMode = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().NightTimeMode do
+               game:GetService("Lighting").ClockTime = 0
+               task.wait(1)
+            end
+         end)
+      else
+         game:GetService("Lighting").ClockTime = 12
+      end
+   end,
+})
+
+AFKTab:CreateSection("— FPS Engine Controller —")
+AFKTab:CreateToggle({
+    Name = "🚀 Enable FPS Limit",
+    CurrentValue = false,
+    Flag = "EnableFPSLimitFlag",
+    Callback = function(Value)
+        getgenv().EnableFPSLimit = Value
+        if setfpscap then
+            pcall(function() setfpscap(Value and getgenv().TargetFPS or 60) end)
+        end
+    end,
+})
+AFKTab:CreateInput({
+    Name = "⌨️ Set FPS Value",
+    PlaceholderText = "E.g. 30, 45, 60",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num and num > 0 then
+            getgenv().TargetFPS = num
+            if getgenv().EnableFPSLimit and setfpscap then
+                pcall(function() setfpscap(num) end)
+            end
+        end
+    end,
+})
+
+AFKTab:CreateSection("— Black Screen Mode —")
+AFKTab:CreateToggle({
+   Name = "🖥️ Disable 3D Rendering (Black Screen Fix)",
+   CurrentValue = false,
+   Flag = "Disable3DFlag",
+   Callback = function(Value)
+      BlackFrameGui.Enabled = Value
+      if Value then
+         AFKStartTime = os.time()
+         pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+      end
+   end,
+})
+
+AFKTab:CreateSection("— Auto-AFK (Anti-Disconnect) —")
+AFKTab:CreateToggle({
+   Name = "🦘 Auto Jump",
+   CurrentValue = false,
+   Flag = "AutoJumpFlag",
+   Callback = function(Value)
+      getgenv().AutoJumpAFK = Value
+      if Value then
+         task.spawn(function()
+            while getgenv().AutoJumpAFK do
+               local char = LocalPlayer.Character
+               local hum = char and char:FindFirstChildOfClass("Humanoid")
+               if hum and hum.FloorMaterial ~= Enum.Material.Air then
+                  hum:ChangeState(Enum.HumanoidStateType.Jumping)
+               end
+               task.wait(getgenv().AutoJumpDelay)
+            end
+         end)
+      end
+   end,
+})
+AFKTab:CreateInput({
+   Name = "⏱️ Delay Auto Jump (Seconds)",
+   PlaceholderText = "Default: 5",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local num = tonumber(Text)
+      getgenv().AutoJumpDelay = (num and num > 0) and num or 5
+   end,
+})
+
+----------------------------------------------------
+-- 👤 CREDITS
+----------------------------------------------------
+local CreditTab = Window:CreateTab("👤 Credits", 4483362458)
+CreditTab:CreateSection("— Blacklist Players —")
+if #bannedUsersList == 0 then
+    CreditTab:CreateParagraph({ Title = "🚫 Banned List", Content = "No one got banned from using TSS Script!" })
+else
+    local bannedText = ""
+    for _, id in ipairs(bannedUsersList) do
+        local username = "Unknown"
+        pcall(function() username = Players:GetNameFromUserIdAsync(tonumber(id)) end)
+        bannedText = bannedText .. string.format("%s (@%s) got Banned\n", tostring(id), username)
+    end
+    CreditTab:CreateParagraph({ Title = "🔨 Banned List", Content = bannedText })
+end
+
+CreditTab:CreateSection("— Owner Info —")
+CreditTab:CreateParagraph({ Title = "👤 Creator Information", Content = "Owner & Creator: AgostDead\nStatus: " .. IsOwnerInServer })
+CreditTab:CreateParagraph({ Title = "💬 Message", Content = "Thanks for using my script!" })
+
+----------------------------------------------------
+-- 📢 UPDATE
+----------------------------------------------------
+local UpdateTab = Window:CreateTab("📢 Update", 4483362458)
+UpdateTab:CreateSection("— Latest Changelog —")
+UpdateTab:CreateParagraph({
+    Title = "📌 World 2 Release Note",
+    Content = "Note:\nSame version. Added TSS Script (World 2)."
+})
+UpdateTab:CreateParagraph({
+    Title = "📌 Changelog v1.6.5",
+    Content = "Whats new in v1.6.5\n- Added Tab: Glitches\n- Added \"Sol RNG Simulator\" at tab Glitches"
+})
+
+----------------------------------------------------
+-- 💬 COMMENT (без вебхука)
+----------------------------------------------------
+local CommentTab = Window:CreateTab("💬 Comment", 4483362458)
+CommentTab:CreateSection("— Send Your Feedback —")
+CommentTab:CreateParagraph({
+    Title = "📩 Give us a review or suggestion!",
+    Content = "Type your review below and click 'Send Comment'."
+})
+
+local userCommentText = ""
+local lastCommentTime = 0
+local COMMENT_COOLDOWN = 120
+
+CommentTab:CreateInput({
+    Name = "💬 Message",
+    PlaceholderText = "Enter your review or suggestion here...",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text) userCommentText = Text end,
+})
+
+CommentTab:CreateButton({
+    Name = "🚀 Send Comment",
+    Callback = function()
+        if userCommentText == "" or #userCommentText < 5 then
+            return Rayfield:Notify({ Title = "Comment Failed", Content = "Please write a meaningful message (at least 5 characters).", Duration = 3 })
+        end
+        local currentTime = os.time()
+        if currentTime - lastCommentTime < COMMENT_COOLDOWN then
+            local timeLeft = COMMENT_COOLDOWN - (currentTime - lastCommentTime)
+            return Rayfield:Notify({ Title = "Please Wait.", Content = string.format("Too fast! Wait %d seconds.", timeLeft), Duration = 4 })
+        end
+        -- Вебхук не настроен — просто локальное уведомление
+        lastCommentTime = os.time()
+        Rayfield:Notify({
+            Title = "Success.",
+            Content = "Comment noted locally (no webhook configured).",
+            Duration = 4
+        })
+    end,
+})
+
+----------------------------------------------------
+-- ⚙️ SETTINGS
+----------------------------------------------------
+local SettingsTab = Window:CreateTab("⚙️ Settings", 4483362458)
+SettingsTab:CreateSection("🎨 Theme Customization")
+local ThemeStatusLabel = SettingsTab:CreateLabel("Current Theme: [" .. currentTheme .. "]")
+
+SettingsTab:CreateDropdown({
+    Name = "Select Preset Theme",
+    Options = {"Default", "AmberGlow", "Ocean", "Green", "Serenity", "Light"},
+    CurrentOption = {savedTheme},
+    MultipleOptions = false,
+    Callback = function(Option)
+        currentTheme = Option[1]
+        ThemeStatusLabel:Set("Current Theme: [" .. currentTheme .. "]")
+        if Rayfield.ModifyTheme then
+            Rayfield:ModifyTheme(currentTheme)
+        else
+            Rayfield:Notify({ Title = "Notice", Content = "Save theme and rejoin to apply!", Duration = 3 })
+        end
+    end,
+})
+
+SettingsTab:CreateButton({
+    Name = "💾 Save Default Theme",
+    Callback = function()
+        writefile(THEME_FILE, HttpService:JSONEncode({ThemeName = currentTheme}))
+        Rayfield:Notify({ Title = "Success!", Content = "Theme saved!", Duration = 3 })
+    end,
+})
+
+SettingsTab:CreateSection("⚙️ Configuration Management")
+local ConfigStatusLabel = SettingsTab:CreateLabel("Active Config: [" .. activeConfigName .. "]")
+
+local function GetSavedConfigs()
+    local list = {}
+    if listfiles then
+        for _, file in ipairs(listfiles("")) do
+            local name = string.match(file, "TSSHub_Config_(.-)%.json$")
+            if name then
+                table.insert(list, name)
+                if #list >= 10 then break end
+            end
+        end
+    end
+    if #list == 0 then table.insert(list, "None") end
+    return list
+end
+
+local ConfigDropdown = SettingsTab:CreateDropdown({
+    Name = "Select Saved Config (Max 10)",
+    Options = GetSavedConfigs(),
+    CurrentOption = {GetSavedConfigs()[1] or "None"},
+    MultipleOptions = false,
+    Callback = function(Option)
+        if Option[1] and Option[1] ~= "None" then targetConfigName = Option[1] end
+    end,
+})
+
+SettingsTab:CreateInput({
+    Name = "New Configuration Name",
+    PlaceholderText = "Enter config name here...",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text) targetConfigName = Text end,
+})
+
+SettingsTab:CreateButton({
+    Name = "➕ Create / Overwrite Config",
+    Callback = function()
+        if targetConfigName == "" or targetConfigName == "None" then
+            return Rayfield:Notify({ Title = "Error", Content = "Enter a valid config name!", Duration = 3 })
+        end
+        local savedConfigs = GetSavedConfigs()
+        local isExisting = false
+        for _, name in ipairs(savedConfigs) do
+            if name == targetConfigName then isExisting = true break end
+        end
+        if not isExisting and #savedConfigs >= 10 and savedConfigs[1] ~= "None" then
+            return Rayfield:Notify({ Title = "Limit Reached", Content = "Max 10 configs! Delete one first.", Duration = 4 })
+        end
+        local configData = {}
+        for flagName, flagState in pairs(Rayfield.Flags) do
+            configData[flagName] = flagState.CurrentValue
+        end
+        local ok = pcall(function()
+            writefile("TSSHub_Config_" .. targetConfigName .. ".json", HttpService:JSONEncode(configData))
+        end)
+        if ok then
+            activeConfigName = targetConfigName
+            ConfigStatusLabel:Set("Active Config: [" .. activeConfigName .. "]")
+            ConfigDropdown:Set(GetSavedConfigs())
+            Rayfield:Notify({ Title = "Saved!", Content = "Config [" .. activeConfigName .. "] saved.", Duration = 3 })
+        else
+            Rayfield:Notify({ Title = "Error", Content = "Failed to save config!", Duration = 3 })
+        end
+    end,
+})
+
+SettingsTab:CreateButton({
+    Name = "📂 Load Selected Config",
+    Callback = function()
+        if targetConfigName == "" or targetConfigName == "None" then
+            return Rayfield:Notify({ Title = "Error", Content = "Select a config first!", Duration = 3 })
+        end
+        local fileName = "TSSHub_Config_" .. targetConfigName .. ".json"
+        if not isfile(fileName) then
+            return Rayfield:Notify({ Title = "Error", Content = "Config file not found!", Duration = 3 })
+        end
+        local ok, content = pcall(function() return readfile(fileName) end)
+        if ok then
+            local okDec, data = pcall(function() return HttpService:JSONDecode(content) end)
+            if okDec and type(data) == "table" then
+                for flagName, value in pairs(data) do
+                    if Rayfield.Flags[flagName] and Rayfield.Flags[flagName].Set then
+                        Rayfield.Flags[flagName]:Set(value)
+                    end
+                end
+                activeConfigName = targetConfigName
+                ConfigStatusLabel:Set("Active Config: [" .. activeConfigName .. "]")
+                Rayfield:Notify({ Title = "Loaded!", Content = "Settings loaded!", Duration = 3 })
+            else
+                Rayfield:Notify({ Title = "Error", Content = "Failed to parse config!", Duration = 3 })
+            end
+        end
+    end,
+})
+
+SettingsTab:CreateButton({
+    Name = "🔄📂 Auto Load Selected Config",
+    Callback = function()
+        if targetConfigName == "" or targetConfigName == "None" then
+            return Rayfield:Notify({ Title = "Error", Content = "Select a config to Auto-Load!", Duration = 3 })
+        end
+        local fileName = "TSSHub_Config_" .. targetConfigName .. ".json"
+        if not isfile(fileName) then
+            return Rayfield:Notify({ Title = "Error", Content = "Config file does not exist!", Duration = 3 })
+        end
+        local ok = pcall(function()
+            writefile("TSSHub_AutoLoad.json", HttpService:JSONEncode({AutoLoadConfig = targetConfigName}))
+        end)
+        if ok then
+            Rayfield:Notify({ Title = "Auto Load Set!", Content = "[" .. targetConfigName .. "] will auto-load next time!", Duration = 4 })
+        else
+            Rayfield:Notify({ Title = "Error", Content = "Failed to save Auto Load!", Duration = 3 })
+        end
+    end,
+})
+
+SettingsTab:CreateButton({
+    Name = "❌ Delete Config From Device",
+    Callback = function()
+        if targetConfigName == "" or targetConfigName == "None" then return end
+        local fileName = "TSSHub_Config_" .. targetConfigName .. ".json"
+        if isfile(fileName) then
+            delfile(fileName)
+            targetConfigName = ""
+            ConfigDropdown:Set(GetSavedConfigs())
+            Rayfield:Notify({ Title = "System", Content = "Config removed.", Duration = 3 })
+        else
+            Rayfield:Notify({ Title = "Error", Content = "File does not exist!", Duration = 3 })
+        end
+    end,
+})
+
+----------------------------------------------------
+-- Логгер выполнения (вебхук отключён)
+----------------------------------------------------
+task.spawn(function()
+    -- EXEC_WEBHOOK == "-" → ничего не отправляем
+    if EXEC_WEBHOOK == "-" or EXEC_WEBHOOK == "" then return end
+    pcall(function()
+        local MarketplaceService = game:GetService("MarketplaceService")
+        if game.GameId == 0 then repeat task.wait() until game.GameId ~= 0 end
+        local rawGameName = ""
+        local apiSuccess, info = pcall(function()
+            return MarketplaceService:GetProductInfo(game.GameId, Enum.InfoType.GamePass)
+        end)
+        if apiSuccess and info and info.Name then
+            rawGameName = info.Name
+        else
+            rawGameName = (workspace.Name ~= "Workspace") and workspace.Name or game.Name
+        end
+        local data = {
+            ["embeds"] = {{
+                ["title"] = "🚀 Script Executed!",
+                ["description"] = "**TSS Script (World 2).**",
+                ["color"] = 16776960,
+                ["fields"] = {
+                    { ["name"] = "👤 Username", ["value"] = LocalPlayer.Name, ["inline"] = false },
+                    { ["name"] = "🆔 UserID", ["value"] = tostring(LocalPlayer.UserId), ["inline"] = false },
+                    { ["name"] = "🎮 Game", ["value"] = rawGameName .. " (" .. tostring(game.PlaceId) .. ")", ["inline"] = false }
+                },
+                ["footer"] = { ["text"] = "TSS Logger" }
+            }}
+        }
+        universalRequest({
+            Url = EXEC_WEBHOOK,
+            Method = "POST",
+            Headers = { ["content-type"] = "application/json" },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+end)
+
+Rayfield:Notify({
+   Title = "Update Complete!",
+   Content = "Version v1.6.5",
+   Duration = 5,
+   Image = 4483362458,
+})
+
+----------------------------------------------------
+-- Авто-загрузка конфига при старте
+----------------------------------------------------
+task.spawn(function()
+    task.wait(1)
+    local AUTOLOAD_FILE = "TSSHub_AutoLoad.json"
+    if isfile(AUTOLOAD_FILE) then
+        local ok, content = pcall(function() return readfile(AUTOLOAD_FILE) end)
+        if ok then
+            local okDec, autoData = pcall(function() return HttpService:JSONDecode(content) end)
+            if okDec and autoData and autoData.AutoLoadConfig then
+                local autoConfigName = autoData.AutoLoadConfig
+                local configFile = "TSSHub_Config_" .. autoConfigName .. ".json"
+                if isfile(configFile) then
+                    local okRead, configContent = pcall(function() return readfile(configFile) end)
+                    if okRead then
+                        local okParse, configData = pcall(function() return HttpService:JSONDecode(configContent) end)
+                        if okParse and type(configData) == "table" then
+                            for flagName, savedValue in pairs(configData) do
+                                if Rayfield.Flags[flagName] and Rayfield.Flags[flagName].Set then
+                                    Rayfield.Flags[flagName]:Set(savedValue)
+                                end
+                            end
+                            activeConfigName = autoConfigName
+                            ConfigStatusLabel:Set("Active Config: [" .. activeConfigName .. "]")
+                            Rayfield:Notify({
+                                Title = "Auto Loaded!",
+                                Content = "Applied configuration: [" .. autoConfigName .. "]",
+                                Duration = 4
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
