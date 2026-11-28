@@ -351,7 +351,7 @@ MainTab:CreateToggle({
       if Value then
          task.spawn(function()
             while getgenv().AutoCrown do
-               SafeTP(Vector3.new(-11, 5, -152))
+               SafeTP(Vector3.new(208, 318, -120))
                task.wait(0.5)
             end
          end)
